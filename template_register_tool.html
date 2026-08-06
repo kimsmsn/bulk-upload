@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>캠페인 등록 도구 (레거시 타입 + 템플릿 타입)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy:#1b2a4a; --navy-2:#24365e; --accent:#e8622c; --accent-2:#c94f1f;
+    --bg:#f5f6f8; --card:#ffffff; --line:#e2e5ea; --text:#1c2230; --muted:#6b7280;
+    --req:#c0392b; --req-bg:#fdecea;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;background:var(--bg);color:var(--text);}
+  header{background:var(--navy);color:#fff;padding:20px 28px;}
+  header h1{margin:0;font-size:19px;}
+  header p{margin:6px 0 0;font-size:12.5px;color:#b9c3da;}
+  .wrap{max-width:1280px;margin:0 auto;padding:22px;}
+  .layout{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;align-items:start;}
+  @media (max-width:960px){.layout{grid-template-columns:1fr;}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:18px;}
+  .card h2{font-size:15px;margin:0 0 14px;padding-bottom:10px;border-bottom:2px solid var(--navy);color:var(--navy-2);}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;}
+  .tab{flex:1;padding:10px 8px;text-align:center;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:var(--muted);font-weight:600;}
+  .tab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .field{margin-bottom:12px;}
+  .field label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-bottom:5px;}
+  .badge{font-size:10px;padding:1px 6px;border-radius:10px;color:#fff;}
+  .badge.req{background:var(--req);}
+  .badge.opt{background:var(--muted);}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%;padding:8px 10px;border:1px solid #cfd4dc;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;
+  }
+  .field.req input, .field.req select{background:var(--req-bg);border-color:#eab7ac;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .hint{font-size:11px;color:var(--muted);margin-top:3px;}
+  .btn{appearance:none;border:none;border-radius:7px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent-2);}
+  .btn-outline{background:#fff;border:1px solid var(--navy);color:var(--navy);}
+  .btn-outline:hover{background:#eef1f7;}
+  .btn-danger{background:#fff;border:1px solid #c0392b;color:#c0392b;padding:4px 8px;font-size:11px;}
+  .preview{white-space:pre-wrap;font-size:12.5px;background:#fbfaf7;border:1px dashed #d8cdb8;border-radius:8px;padding:12px;line-height:1.5;color:#3b3120;min-height:60px;}
+  .preview-label{font-size:11px;font-weight:700;color:var(--navy-2);margin:10px 0 4px;}
+  .list-item{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;background:#fafbfc;}
+  .list-item .meta{color:var(--muted);font-size:11px;margin-top:2px;}
+  .type-pill{display:inline-block;font-size:10px;background:var(--navy);color:#fff;padding:1px 7px;border-radius:10px;margin-right:6px;}
+  #jsonOut{width:100%;height:220px;font-family:Consolas,Menlo,monospace;font-size:11.5px;}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  .empty{color:var(--muted);font-size:12.5px;padding:10px 0;}
+  .apiresult{font-size:12px;margin-top:10px;padding:10px;border-radius:8px;white-space:pre-wrap;}
+  .apiresult.ok{background:#eafaf0;color:#166534;}
+  .apiresult.err{background:#fdecea;color:#991b1b;}
+  .gridwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+  table.grid{border-collapse:collapse;font-size:12px;min-width:100%;}
+  table.grid th, table.grid td{border:1px solid #e4e7ec;padding:0;position:relative;}
+  table.grid th{background:var(--navy);color:#fff;font-size:11px;padding:8px 6px;white-space:nowrap;}
+  table.grid td input, table.grid td select{border:none;border-radius:0;padding:6px 8px;font-size:12px;min-width:120px;background:#fff;}
+  table.grid tbody tr:nth-child(even) td input{background:#fafbfc;}
+  table.grid td.rownum{background:#f0f1f4;color:var(--muted);text-align:center;font-weight:700;padding:0 8px;min-width:30px;}
+  table.grid td.delcell{text-align:center;background:#fafbfc;}
+  .fillhandle{position:absolute;width:8px;height:8px;background:var(--accent);border:1px solid #fff;box-shadow:0 0 0 1px var(--accent);cursor:crosshair;bottom:-4px;right:-4px;z-index:3;}
+  table.grid td.selected{outline:2px solid var(--accent);outline-offset:-2px;background:#fff3ea;}
+</style>
+</head>
+<body>
+<header>
+  <h1>캠페인 등록 도구 (레거시 타입 + 템플릿 타입)</h1>
+  <p>NPD0/NPN0/NPM0/NSN4는 기존처럼 마스킹·정답이 자동 계산됩니다. 그 외 타입은 시트에 저장된 템플릿의 빈칸을 채우는 방식입니다.</p>
+</header>
+
+<div class="wrap">
+
+  <div class="modetabs" style="display:flex;gap:10px;margin-bottom:18px;">
+    <div class="tab active" id="modeIndividual" style="flex:0 0 160px;">개별 등록</div>
+    <div class="tab" id="modeBulk" style="flex:0 0 200px;">일괄 등록 (엑셀형태)</div>
+  </div>
+
+  <div class="card">
+    <h2 style="border:none;margin:0;padding:0;">캠페인 타입</h2>
+    <div class="field" style="max-width:420px;margin-top:12px;">
+      <select id="typeSelect"></select>
+    </div>
+    <div id="templatePreviewWrap" style="margin-top:10px;display:none;">
+      <div class="preview-label">선택된 타입의 원본 템플릿</div>
+      <div class="preview" id="rawTemplatePreview">-</div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <!-- 개별 등록 -->
+      <div id="individualMode">
+        <div class="card">
+          <h2>공통 정보</h2>
+          <div class="row3">
+            <div class="field req"><label>시작일 <span class="badge req">필수</span></label>
+              <input type="text" id="f_startAt" placeholder="2026-07-06"></div>
+            <div class="field req"><label>종료일 <span class="badge req">필수</span></label>
+              <input type="text" id="f_endAt" placeholder="2026-07-13"></div>
+            <div class="field req"><label>전체 참여 한도 <span class="badge req">필수</span></label>
+              <input type="number" id="f_totalQuota" placeholder="350"></div>
+          </div>
+          <div class="row2">
+            <div class="field req"><label>일 참여 한도 <span class="badge req">필수</span></label>
+              <input type="number" id="f_dailyQuota" placeholder="50"></div>
+            <div class="field"><label>랜딩 URL <span class="badge opt">선택</span></label>
+              <input type="text" id="f_hintUrl" placeholder="https://..."></div>
+          </div>
+        </div>
+
+        <div class="card" id="legacyFieldsCard" style="display:none;">
+          <h2>가이드 문구 (1.2.3... 안내 단계)</h2>
+          <div class="hint" style="margin-bottom:8px;">
+            이 부분만 자유롭게 수정할 수 있습니다. &lt;문제&gt;/&lt;힌트&gt; 부분은 마스킹·정답 자동계산이 그대로 적용되어 아래에 자동으로 붙습니다.
+          </div>
+          <div class="field" style="max-width:320px;">
+            <label>저장된 가이드 선택</label>
+            <select id="guideNameSelect"></select>
+          </div>
+          <textarea id="guideTextArea" rows="6" style="font-family:inherit;"></textarea>
+          <div class="row2" style="margin-top:8px;">
+            <div class="field"><label>저장할 이름</label><input type="text" id="guideSaveName" placeholder="예: 여름이벤트용"></div>
+            <div class="field" style="display:flex;align-items:flex-end;gap:8px;">
+              <button class="btn btn-outline" id="btnSaveGuide" style="flex:1;">💾 이 이름으로 저장</button>
+              <button class="btn btn-outline" id="btnDeleteGuide" style="flex:0 0 90px;">삭제</button>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-outline" id="btnResetGuide">기본값으로 되돌리기</button>
+          </div>
+          <div id="guideSaveResult"></div>
+
+          <h2 style="margin-top:18px;">타입별 원본 데이터</h2>
+          <div id="legacyFields"></div>
+        </div>
+
+        <div class="card" id="customFieldsCard" style="display:none;">
+          <h2>공통 정보 (템플릿 타입)</h2>
+          <div class="field req"><label>오픈 URL (플레이스/상품) <span class="badge req">필수</span></label>
+            <input type="text" id="f_openUrl" placeholder="https://..."></div>
+          <div class="field req"><label>키워드 (,구분) <span class="badge req">필수</span></label>
+            <input type="text" id="f_keyword" placeholder="키워드1,키워드2"></div>
+          <div class="field req"><label>정답 <span class="badge req">필수</span></label>
+            <input type="text" id="f_answer" placeholder="정답 직접 입력"></div>
+
+          <h2>빈칸 채우기</h2>
+          <div id="blankFields"><div class="hint">이 타입은 빈칸이 없습니다.</div></div>
+        </div>
+
+        <div class="card">
+          <div class="actions">
+            <button class="btn btn-primary" id="btnAdd">+ 캠페인 목록에 추가</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="bulkMode" style="display:none;">
+        <div class="card" id="bulkGuideCard" style="display:none;">
+          <h2>가이드 문구 (1.2.3... 안내 단계)</h2>
+          <div class="hint" style="margin-bottom:8px;">
+            지금 선택된 타입으로 일괄 생성하면 <b>이 가이드 문구가 모든 행에 공통으로 적용</b>됩니다.
+            수정 후 저장하면 개별 등록 화면에도 동일하게 반영됩니다.
+          </div>
+          <div class="field" style="max-width:320px;">
+            <label>저장된 가이드 선택</label>
+            <select id="bulkGuideNameSelect"></select>
+          </div>
+          <textarea id="bulkGuideTextArea" rows="6" style="font-family:inherit;"></textarea>
+          <div class="row2" style="margin-top:8px;">
+            <div class="field"><label>저장할 이름</label><input type="text" id="bulkGuideSaveName" placeholder="예: 여름이벤트용"></div>
+            <div class="field" style="display:flex;align-items:flex-end;gap:8px;">
+              <button class="btn btn-outline" id="btnSaveGuideBulk" style="flex:1;">💾 이 이름으로 저장</button>
+              <button class="btn btn-outline" id="btnDeleteGuideBulk" style="flex:0 0 90px;">삭제</button>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-outline" id="btnResetGuideBulk">기본값으로 되돌리기</button>
+          </div>
+          <div id="bulkGuideSaveResult"></div>
+        </div>
+
+        <div class="card">
+          <h2>엑셀처럼 입력하기</h2>
+          <div class="hint" style="margin-bottom:10px;">
+            셀을 클릭해서 직접 입력하거나, 진짜 엑셀에서 범위를 복사한 뒤 첫 칸을 클릭하고 붙여넣기(Ctrl+V)하면
+            여러 행이 한 번에 채워집니다. 셀을 클릭하면 오른쪽 아래 작은 사각형(채우기 핸들)을 드래그해서 값을 채울 수도 있습니다.
+          </div>
+          <div class="gridwrap"><table class="grid" id="gridTable"></table></div>
+          <div class="actions">
+            <button class="btn btn-outline" id="btnAddRows">+ 행 10개 추가</button>
+            <button class="btn btn-outline" id="btnClearGrid">그리드 초기화</button>
+            <button class="btn btn-outline" id="btnDownloadXlsx">엑셀로 다운로드</button>
+            <label class="btn btn-outline" style="margin:0;">
+              엑셀 업로드<input type="file" id="fileUploadXlsx" accept=".xlsx,.xls,.csv" style="display:none;">
+            </label>
+            <button class="btn btn-primary" id="btnGridSubmit">이 데이터로 캠페인 일괄 생성 →</button>
+          </div>
+          <div id="gridResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" id="previewCard">
+        <h2>실시간 미리보기</h2>
+        <div class="preview-label">캠페인명 (자동)</div>
+        <div class="preview" id="prevTitle">-</div>
+        <div class="preview-label">문제 (자동 생성/치환)</div>
+        <div class="preview" id="prevQuestion">-</div>
+        <div class="preview-label">정답</div>
+        <div class="preview" id="prevAnswer">-</div>
+      </div>
+
+      <div class="card">
+        <h2>등록 대기 목록 (<span id="listCount">0</span>건)</h2>
+        <div id="campaignList"><div class="empty">아직 추가된 캠페인이 없습니다.</div></div>
+        <div class="actions">
+          <button class="btn btn-outline" id="btnGenJson">전체 JSON 생성</button>
+        </div>
+        <textarea id="jsonOut" style="display:none;margin-top:10px;" readonly></textarea>
+        <div class="actions" id="jsonActions" style="display:none;">
+          <button class="btn btn-outline" id="btnCopy">JSON 복사</button>
+          <button class="btn btn-outline" id="btnDownload">JSON 파일 다운로드</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TEMPLATE_API_URL = "https://script.google.com/macros/s/AKfycbz3aeyg6KdtZxxr8JOfHulxIYP87sSAw2w2WgsMEG-iqeIf-8CmDmXM-UbkEsholhqC/exec";
+
+function maskText(s){
+  if(s===undefined||s===null) return s;
+  s = String(s);
+  if(s.length===0) return s;
+  if(s.length<=2) return s.slice(0,-1)+"X";
+  return s.split('').map((ch,i)=> ((i+1)%3===0) ? 'X' : ch).join('');
+}
+function halfMask(s){
+  if(!s) return s;
+  s = String(s);
+  const maskLen = Math.floor(s.length/2);
+  const keepLen = s.length - maskLen;
+  return s.slice(0, keepLen) + 'x'.repeat(maskLen);
+}
+function distanceRange(raw){
+  const n = Number(String(raw).replace(/,/g,''));
+  if(isNaN(n)) return String(raw);
+  if(Number.isInteger(n)){
+    const lo = Math.max(n-30, 1), hi = n+30;
+    return `${lo}~${hi}`;
+  }
+  const lo = Math.max(n-3, 1), hi = n+3;
+  return `${lo.toFixed(1)}~${hi.toFixed(1)}`;
+}
+function parseNum(s){
+  if(s===undefined||s===null||s==='') return NaN;
+  return Number(String(s).replace(/,/g,'').trim());
+}
+function firstKeyword(k){ if(!k) return ""; return String(k).split(',')[0].trim(); }
+function autoTitle(k){ const kw=firstKeyword(k); return kw? ("[정답입력]"+kw) : "[정답입력]"; }
+function splitKeywords(k){ if(!k) return []; return String(k).split(',').map(s=>s.trim()).filter(Boolean); }
+function autoCode(typeCode, idx){ return `${typeCode}_${Date.now()}_${idx}`; }
+function fmtWon(n){ return '₩' + Number(n||0).toLocaleString(); }
+
+const LEGACY_TYPES = {
+  NPD0: {
+    label: "NPD0 · 길찾기",
+    openUrlField: "place_url",
+    defaultGuide:
+`1. 키워드 복사 후 검색하러가기 클릭
+2. 복사한 키워드 검색 후 '플레이스명' 클릭
+3. [길찾기] 또는 [내비게이션] 클릭하여 '네이버 지도앱'으로 이동하기
+4. [차량탭] > [안내시작] 순서대로 클릭 후 화면 캡쳐하기`,
+    fields: [
+      {id:"keyword", label:"키워드(,구분)", req:true, ph:"대정읍 당근케익,모슬포 디저트 카페"},
+      {id:"place_url", label:"플레이스URL", req:true, ph:"https://m.place.naver.com/restaurant/xxxx"},
+      {id:"rank", label:"플레이스순위", req:false, ph:"1"},
+      {id:"place_name", label:"플레이스명", req:true, ph:"재클린디저트 모슬포점"}
+    ],
+    build(v, guideText){
+      const place = (v.place_name||"").trim();
+      const question =
+`${guideText}
+
+<문제>
+캡쳐화면 업로드하기
+플레이스명이 나오게 캡쳐해주세요!
+
+<힌트>
+플레이스명: ${maskText(place)}
+
+*네이버 지도앱 설치 필수*`;
+      return {question, answer: place, title: autoTitle(v.keyword)};
+    }
+  },
+  NPN0: {
+    label: "NPN0 · 명소",
+    openUrlField: "place_url",
+    defaultGuide:
+`1. 키워드 복사 후 검색하러 가기 클릭
+2. 복사한 키워드 검색 후 '플레이스명' 클릭 
+3.'주변' > '명소' 순으로 클릭 후 'N'번째 명소 찾기
+4. 플레이스 영역 미노출되는 경우, 블로그 클릭 후 플레이스로 이동`,
+    fields: [
+      {id:"keyword", label:"키워드(,구분)", req:true, ph:"대정읍 당근케익,모슬포 디저트 카페"},
+      {id:"place_url", label:"플레이스URL", req:true, ph:"https://m.place.naver.com/restaurant/xxxx"},
+      {id:"rank", label:"플레이스순위", req:false, ph:"1"},
+      {id:"place_name", label:"플레이스명", req:true, ph:"재클린디저트 모슬포점"},
+      {id:"spot1", label:"명소1", req:true, ph:"남당항 해양분수공원"},
+      {id:"spot2", label:"명소2", req:false, ph:""},
+      {id:"spot3", label:"명소3", req:false, ph:""},
+      {id:"spot4", label:"명소4", req:false, ph:""},
+      {id:"spot5", label:"명소5", req:false, ph:""}
+    ],
+    build(v, guideText){
+      const place=(v.place_name||"").trim();
+      const spots=[1,2,3,4,5].map(i=>({idx:i, name:(v["spot"+i]||"").trim()})).filter(s=>s.name);
+      if(spots.length===0) throw new Error("명소1~5 중 최소 1개는 입력해야 합니다.");
+      let target=spots[0];
+      for(const s of spots){ if(s.name.length < target.name.length) target=s; }
+      const question =
+`${guideText}
+
+<문제>  
+${target.idx} 번째 명소
+
+<힌트>
+플레이스명: ${maskText(place)}`;
+      return {question, answer: target.name, title: autoTitle(v.keyword)};
+    }
+  },
+  NSN4: {
+    label: "NSN4 · 상품번호",
+    openUrlField: "shopping_url",
+    defaultGuide:
+`1. 키워드 복사 후 검색하러 가기 클릭
+2. 복사한 키워드 검색 후 '네이버 가격비교 더보기' 클릭
+3. 힌트와 일치하는 '상품명'과 '스토어' 선택
+4. 상세정보 하단 '구매 추가정보'에서 '상품번호' 확인`,
+    fields: [
+      {id:"keyword", label:"키워드(,구분)", req:true, ph:"통오리,통닭,통돼지"},
+      {id:"shopping_url", label:"쇼핑URL", req:true, ph:"https://smartstore.naver.com/main/products/xxxx"},
+      {id:"page", label:"페이지", req:false, ph:"1"},
+      {id:"rank", label:"순위", req:false, ph:"1"},
+      {id:"store_name", label:"스토어명", req:true, ph:"팜스제임"},
+      {id:"product_name", label:"상품명", req:true, ph:"[냉장] 팜스제임 23호 통오리..."},
+      {id:"price", label:"상품가격", req:true, ph:"13,700 원"},
+      {id:"product_no", label:"상품번호", req:true, ph:"10486805661"},
+      {id:"prefix_or_suffix", label:"정답자리", req:true, type:"select", options:["앞 네자리","뒤 네자리"]},
+      {id:"image_url", label:"이미지URL", req:false, ph:"https://.../image.jpg"}
+    ],
+    build(v, guideText){
+      const store=(v.store_name||"").trim();
+      const product=(v.product_name||"").trim();
+      const price=(v.price||"").trim();
+      const no=(v.product_no||"").trim();
+      const choice=(v.prefix_or_suffix||"앞 네자리").trim();
+      const answer = choice==="뒤 네자리" ? no.slice(-4) : no.slice(0,4);
+      const page=(v.page||"").trim(), rank=(v.rank||"").trim();
+      let rankLine="";
+      if(page||rank){
+        const parts=[page, rank? (rank+"위"):""].filter(Boolean);
+        rankLine="순위(광고제외) : "+parts.join(", ");
+      }
+      const question =
+`${guideText}
+
+<문제>
+상품번호: ${choice}
+
+<힌트>
+스토어명 : ${maskText(store)}
+상품명   : ${maskText(product)}
+상품금액 : ${price}` + (rankLine? "\n"+rankLine : "");
+      return {question, answer, title: autoTitle(v.keyword)};
+    }
+  },
+  NPM0: {
+    label: "NPM0 · 길찾기거리",
+    openUrlField: "place_url",
+    defaultGuide: {
+      "출발지":
+`1. 키워드 복사 후 검색하러가기 클릭
+2. 검색창에 키워드 지우고 복사한 키워드 붙여넣기
+3. 힌트와 일치하는 플레이스명 찾기
+4. '길찾기' 클릭
+5.'출발지'에  힌트에서 제시하는 장소 붙여넣고 '도보'에 나오는 '가장 빠른'거리 입력하기`,
+      "명소":
+`1. 키워드 복사 후 검색하러가기 클릭 
+2. 힌트에서 제시한  '플레이스명' 클릭 
+3. 플레이스명 복사 후  '주변' > '명소' 순으로 클릭
+4. 힌트에서 제시한 '명소' 클릭 후 '길찾기' 클릭
+5.'출발지'에  '플레이스명' 붙여넣고 '도보'에 나오는 '가장 빠른'거리 입력하기`
+    },
+    guideVariant(v){ return (v.startType||"명소").trim(); }, // NPM0는 기준지점(명소/출발지)에 따라 가이드가 2종류
+    fields: [
+      {id:"keyword", label:"키워드(,구분)", req:true, ph:"대정읍 당근케익,모슬포 디저트 카페"},
+      {id:"place_url", label:"플레이스URL", req:true, ph:"https://m.place.naver.com/restaurant/xxxx"},
+      {id:"rank", label:"플레이스순위", req:false, ph:"1"},
+      {id:"place_name", label:"플레이스명", req:true, ph:"재클린디저트 모슬포점"},
+      {id:"startType", label:"기준지점", req:true, type:"select", options:["명소","출발지"]},
+      {id:"order_n", label:"n번째(명소일 때만)", req:false, ph:"3"},
+      {id:"ref_name", label:"명소/출발지명", req:true, ph:"서리풀공원"},
+      {id:"distance_answer", label:"정답거리(m 또는 km)", req:true, ph:"350 또는 1.2"}
+    ],
+    build(v, guideText){
+      const place=(v.place_name||"").trim();
+      const refName=(v.ref_name||"").trim();
+      const startType=(v.startType||"명소").trim();
+      const answer = distanceRange(v.distance_answer);
+      const maskedPlace = maskText(place);
+      let question;
+      if(startType==="출발지"){
+        question =
+`${guideText}
+
+<문제>  
+''가장 빠른'' 거리 입력 (@@@m, @.@km)
+
+<힌트>
+플레이스명: ${maskedPlace}
+출발지: ${refName}`;
+      } else {
+        const n = (v.order_n||"").trim();
+        if(!n) throw new Error("'명소' 방식은 n번째 값을 입력해야 합니다.");
+        const maskedRef = halfMask(refName);
+        question =
+`${guideText}
+
+<문제>  
+''가장 빠른'' 거리 입력 (@@@m, @.@km)
+
+<힌트>
+플레이스명: ${maskedPlace}
+${n}번쨰 명소: ${maskedRef}`;
+      }
+      return {question, answer, title: autoTitle(v.keyword)};
+    }
+  }
+};
+const LEGACY_CODES = Object.keys(LEGACY_TYPES);
+
+// ==================== 가이드 문구 (1.2.3...) - 이름 붙여서 여러 개 저장/선택 ====================
+let GUIDES = {}; // { typeCode: [{name, guideText}, ...] }  (시트에서 불러온 커스텀 저장본들)
+let selectedGuideName = {}; // { typeCode: '지금 선택된 이름' }
+
+// 타입의 "기본값" 옵션들. NPM0는 기준지점별로 2개(기본값(명소)/기본값(출발지)), 나머지는 1개(기본값)
+function getDefaultGuideOptions(typeCode){
+  const type = LEGACY_TYPES[typeCode];
+  if(!type) return [];
+  if(type.guideVariant){
+    return Object.keys(type.defaultGuide).map(variant => ({ name: `기본값(${variant})`, guideText: type.defaultGuide[variant] }));
+  }
+  return [{ name:'기본값', guideText: type.defaultGuide }];
+}
+// 기본값 옵션 + 시트에 저장된 커스텀 이름들을 합친 전체 목록
+function getGuideOptions(typeCode){
+  return getDefaultGuideOptions(typeCode).concat(GUIDES[typeCode] || []);
+}
+function getGuideTextByName(typeCode, name){
+  const opt = getGuideOptions(typeCode).find(o=>o.name===name);
+  return opt ? opt.guideText : '';
+}
+function defaultSelectedName(typeCode){
+  const opts = getDefaultGuideOptions(typeCode);
+  return opts.length ? opts[0].name : '';
+}
+// 지금 선택된 이름의 가이드 텍스트 (없으면 그 타입의 첫 기본값)
+function currentGuideText(typeCode){
+  const name = selectedGuideName[typeCode] || defaultSelectedName(typeCode);
+  return getGuideTextByName(typeCode, name) || '';
+}
+
+async function loadGuides(){
+  try{
+    const res = await fetch(`${TEMPLATE_API_URL}?action=getGuides`);
+    const data = await res.json();
+    GUIDES = {};
+    if(data.success){
+      (data.guides||[]).forEach(g=>{
+        if(!GUIDES[g.code]) GUIDES[g.code] = [];
+        GUIDES[g.code].push({ name: g.name, guideText: g.guideText });
+      });
+    }
+  }catch(e){
+    console.error('가이드 로딩 실패', e);
+  }
+}
+
+async function saveGuideAs(typeCode, name, guideText){
+  const res = await fetch(TEMPLATE_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ type:'saveGuide', code:typeCode, name, guideText })
+  });
+  const data = await res.json();
+  if(data.success){
+    GUIDES[typeCode] = (data.guides||[]).filter(g=>g.code===typeCode).map(g=>({name:g.name, guideText:g.guideText}));
+    selectedGuideName[typeCode] = name;
+  }
+  return data;
+}
+
+async function deleteGuideName(typeCode, name){
+  const res = await fetch(TEMPLATE_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ type:'deleteGuide', code:typeCode, name })
+  });
+  const data = await res.json();
+  if(data.success){
+    GUIDES[typeCode] = (data.guides||[]).filter(g=>g.code===typeCode).map(g=>({name:g.name, guideText:g.guideText}));
+    if(selectedGuideName[typeCode]===name) selectedGuideName[typeCode] = defaultSelectedName(typeCode);
+  }
+  return data;
+}
+
+let CUSTOM_TEMPLATES = [];
+
+function countBlanks(template){
+  const matches = template.match(/\((\d+)\)/g) || [];
+  if(matches.length===0) return 0;
+  const nums = matches.map(m => parseInt(m.replace(/[()]/g,''), 10));
+  return Math.max(...nums);
+}
+function substituteTemplate(template, blanks){
+  let result = template;
+  blanks.forEach((val, idx)=>{
+    const token = `(${idx+1})`;
+    result = result.split(token).join(val==null? '' : val);
+  });
+  return result;
+}
+
+async function loadTemplates(){
+  try{
+    const res = await fetch(`${TEMPLATE_API_URL}?action=getTemplates`);
+    const data = await res.json();
+    CUSTOM_TEMPLATES = (data.success && data.templates) ? data.templates : [];
+  }catch(e){
+    console.error('템플릿 로딩 실패', e);
+    CUSTOM_TEMPLATES = [];
+  }
+  renderTypeSelect();
+}
+
+function isLegacyType(code){ return LEGACY_CODES.indexOf(code) !== -1; }
+function getCustomTemplate(code){ return CUSTOM_TEMPLATES.find(t=>t.code===code) || null; }
+
+function renderTypeSelect(){
+  const sel = document.getElementById('typeSelect');
+  const legacyOpts = LEGACY_CODES.map(code => `<option value="${code}">${LEGACY_TYPES[code].label} (자동)</option>`);
+  const customOpts = CUSTOM_TEMPLATES.map(t => `<option value="${t.code}">${t.name} (${t.code}) · 템플릿</option>`);
+  sel.innerHTML = legacyOpts.concat(customOpts).join('');
+  onTypeChange();
+}
+
+let campaigns = [];
+let gridByType = {};
+let currentMode = 'individual';
+
+function currentType(){ return document.getElementById('typeSelect').value; }
+
+function onTypeChange(){
+  const code = currentType();
+  const legacy = isLegacyType(code);
+  document.getElementById('legacyFieldsCard').style.display = legacy ? 'block' : 'none';
+  document.getElementById('customFieldsCard').style.display = legacy ? 'none' : 'block';
+  document.getElementById('templatePreviewWrap').style.display = legacy ? 'none' : 'block';
+
+  if(legacy){
+    renderLegacyFields(code);
+  } else {
+    const tmpl = getCustomTemplate(code);
+    document.getElementById('rawTemplatePreview').textContent = tmpl ? tmpl.template : '(템플릿을 찾을 수 없습니다)';
+    renderBlankFields(tmpl);
+  }
+  updatePreview();
+  if(currentMode==='bulk'){ renderGrid(); refreshBulkGuideCard(); }
+}
+document.getElementById('typeSelect').addEventListener('change', onTypeChange);
+
+function renderLegacyFields(code){
+  const wrap = document.getElementById('legacyFields');
+  wrap.innerHTML = '';
+  const type = LEGACY_TYPES[code];
+  type.fields.forEach(f=>{
+    const div = document.createElement('div'); div.className = 'field' + (f.req? ' req':'');
+    const label = document.createElement('label');
+    label.innerHTML = f.label + ' <span class="badge ' + (f.req?'req">필수':'opt">선택') + '</span>';
+    div.appendChild(label);
+    let input;
+    if(f.type==='select'){
+      input = document.createElement('select');
+      f.options.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; input.appendChild(op); });
+    } else {
+      input = document.createElement('input'); input.type='text'; input.placeholder = f.ph||'';
+    }
+    input.id = 'lf_' + f.id;
+    input.addEventListener('input', updatePreview);
+    input.addEventListener('change', updatePreview);
+    div.appendChild(input);
+    wrap.appendChild(div);
+  });
+  refreshGuideTextArea(code);
+}
+function getLegacyValues(code){
+  const type = LEGACY_TYPES[code];
+  const v = {};
+  type.fields.forEach(f=>{ const el=document.getElementById('lf_'+f.id); v[f.id] = el ? el.value : ''; });
+  return v;
+}
+
+// 이름 드롭박스 채우고, 현재 선택된 이름의 텍스트를 textarea에 표시
+function refreshGuideTextArea(code){
+  const sel = document.getElementById('guideNameSelect');
+  const options = getGuideOptions(code);
+  const selectedName = selectedGuideName[code] || defaultSelectedName(code);
+  sel.innerHTML = options.map(o=>`<option value="${o.name}"${o.name===selectedName?' selected':''}>${o.name}</option>`).join('');
+  document.getElementById('guideTextArea').value = getGuideTextByName(code, selectedName);
+  document.getElementById('guideSaveName').value = selectedName;
+  document.getElementById('guideSaveResult').innerHTML = '';
+}
+document.getElementById('guideTextArea').addEventListener('input', updatePreview);
+document.getElementById('guideNameSelect').addEventListener('change', ()=>{
+  const code = currentType();
+  const name = document.getElementById('guideNameSelect').value;
+  selectedGuideName[code] = name;
+  document.getElementById('guideTextArea').value = getGuideTextByName(code, name);
+  document.getElementById('guideSaveName').value = name;
+  updatePreview();
+});
+
+document.getElementById('btnSaveGuide').addEventListener('click', async ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  const name = document.getElementById('guideSaveName').value.trim();
+  if(!name){ alert('저장할 이름을 입력해주세요.'); return; }
+  const guideText = document.getElementById('guideTextArea').value;
+  const resEl = document.getElementById('guideSaveResult');
+  resEl.innerHTML = '저장 중...';
+  try{
+    const data = await saveGuideAs(code, name, guideText);
+    if(data.success){
+      resEl.innerHTML = `<div class="apiresult ok">✅ "${name}" 이름으로 저장되었습니다.</div>`;
+      refreshGuideTextArea(code);
+      if(currentMode==='bulk') refreshBulkGuideCard();
+    } else {
+      resEl.innerHTML = `<div class="apiresult err">❌ ${data.error||'저장 실패'}</div>`;
+    }
+  }catch(e){
+    resEl.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${e.message}</div>`;
+  }
+});
+
+document.getElementById('btnDeleteGuide').addEventListener('click', async ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  const name = document.getElementById('guideNameSelect').value;
+  if(name.startsWith('기본값')){ alert('기본값은 삭제할 수 없습니다.'); return; }
+  if(!confirm(`"${name}" 저장본을 삭제할까요?`)) return;
+  const resEl = document.getElementById('guideSaveResult');
+  const data = await deleteGuideName(code, name);
+  resEl.innerHTML = data.success
+    ? `<div class="apiresult ok">✅ 삭제되었습니다.</div>`
+    : `<div class="apiresult err">❌ ${data.error||'삭제 실패'}</div>`;
+  refreshGuideTextArea(code);
+  if(currentMode==='bulk') refreshBulkGuideCard();
+});
+
+document.getElementById('btnResetGuide').addEventListener('click', ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  document.getElementById('guideTextArea').value = getDefaultGuideOptions(code)[0].guideText;
+  updatePreview();
+});
+
+function renderBlankFields(tmpl){
+  const wrap = document.getElementById('blankFields');
+  wrap.innerHTML = '';
+  if(!tmpl){ wrap.innerHTML = '<div class="hint">템플릿을 찾을 수 없습니다.</div>'; return; }
+  const n = countBlanks(tmpl.template);
+  if(n===0){ wrap.innerHTML = '<div class="hint">이 타입은 빈칸이 없습니다. (고정 문구 그대로 사용)</div>'; return; }
+  for(let i=1;i<=n;i++){
+    const div = document.createElement('div'); div.className='field req';
+    const label = document.createElement('label');
+    label.innerHTML = `빈칸 (${i}) 내용 <span class="badge req">필수</span>`;
+    const input = document.createElement('input'); input.type='text'; input.id=`f_blank_${i}`;
+    input.placeholder = `(${i})에 들어갈 문구`;
+    input.addEventListener('input', updatePreview);
+    div.appendChild(label); div.appendChild(input);
+    wrap.appendChild(div);
+  }
+}
+function getBlankValues(count){
+  const vals = [];
+  for(let i=1;i<=count;i++){
+    const el = document.getElementById(`f_blank_${i}`);
+    vals.push(el ? el.value.trim() : '');
+  }
+  return vals;
+}
+
+document.getElementById('f_openUrl').addEventListener('input', updatePreview);
+document.getElementById('f_keyword').addEventListener('input', updatePreview);
+document.getElementById('f_answer').addEventListener('input', updatePreview);
+
+function updatePreview(){
+  const code = currentType();
+  if(!code) return;
+  try{
+    if(isLegacyType(code)){
+      const v = getLegacyValues(code);
+      const guideEl = document.getElementById('guideTextArea');
+      const guideText = guideEl ? guideEl.value : currentGuideText(code);
+      const built = LEGACY_TYPES[code].build(v, guideText);
+      document.getElementById('prevTitle').textContent = built.title;
+      document.getElementById('prevQuestion').textContent = built.question;
+      document.getElementById('prevAnswer').textContent = built.answer;
+    } else {
+      const tmpl = getCustomTemplate(code);
+      if(!tmpl) return;
+      const n = countBlanks(tmpl.template);
+      const blanks = getBlankValues(n);
+      const question = substituteTemplate(tmpl.template, blanks);
+      const keyword = document.getElementById('f_keyword').value;
+      const answer = document.getElementById('f_answer').value;
+      document.getElementById('prevTitle').textContent = autoTitle(keyword);
+      document.getElementById('prevQuestion').textContent = question;
+      document.getElementById('prevAnswer').textContent = answer || '-';
+    }
+  }catch(e){
+    document.getElementById('prevQuestion').textContent = '(입력 필요) ' + e.message;
+  }
+}
+
+function tryAddCampaign(typeCode, row){
+  const startAt = row.startAt, endAt = row.endAt;
+  const totalQuota = parseNum(row.totalQuota), dailyQuota = parseNum(row.dailyQuota);
+  if(!startAt || !endAt || isNaN(totalQuota) || isNaN(dailyQuota)){
+    return {success:false, error:'시작일/종료일/전체참여한도/일참여한도는 필수입니다.'};
+  }
+
+  let built, openUrl, keyword;
+
+  if(isLegacyType(typeCode)){
+    const type = LEGACY_TYPES[typeCode];
+    const missing = type.fields.filter(f=>f.req && !row[f.id]).map(f=>f.label);
+    if(missing.length) return {success:false, error:'필수 항목 누락: '+missing.join(', ')};
+    const guideText = row.guideText || currentGuideText(typeCode);
+    try{ built = type.build(row, guideText); }
+    catch(e){ return {success:false, error:e.message}; }
+    openUrl = row[type.openUrlField] || '';
+    keyword = row.keyword || '';
+  } else {
+    const tmpl = getCustomTemplate(typeCode);
+    if(!tmpl) return {success:false, error:'선택된 타입의 템플릿을 찾을 수 없습니다.'};
+    if(!row.openUrl || !row.keyword || !row.answer) return {success:false, error:'오픈URL/키워드/정답은 필수입니다.'};
+    const n = countBlanks(tmpl.template);
+    const blanks = [];
+    for(let i=1;i<=n;i++){
+      const v = row['blank'+i];
+      if(!v) return {success:false, error:`빈칸 (${i}) 내용이 비어있습니다.`};
+      blanks.push(v);
+    }
+    const question = substituteTemplate(tmpl.template, blanks);
+    built = { question, answer: row.answer, title: autoTitle(row.keyword) };
+    openUrl = row.openUrl;
+    keyword = row.keyword;
+  }
+
+  const code = row.code || autoCode(typeCode, campaigns.length);
+  if(campaigns.some(c=>c.code===code)) return {success:false, error:'캠페인 코드 중복: '+code};
+
+  const campaign = {
+    code, type: typeCode, title: built.title,
+    openUrl, startAt, endAt, totalQuota, dailyQuota,
+    quiz: [{ id:1, question: built.question, answer: built.answer, keyword: splitKeywords(keyword) }]
+  };
+  if(row.hintUrl){ campaign.hintUrl = [row.hintUrl]; }
+
+  campaigns.push(campaign);
+  return {success:true, campaign};
+}
+
+document.getElementById('btnAdd').addEventListener('click', ()=>{
+  const code = currentType();
+  if(!code){ alert('캠페인 타입을 먼저 선택해주세요.'); return; }
+
+  const row = {
+    startAt: document.getElementById('f_startAt').value.trim(),
+    endAt: document.getElementById('f_endAt').value.trim(),
+    totalQuota: document.getElementById('f_totalQuota').value.trim(),
+    dailyQuota: document.getElementById('f_dailyQuota').value.trim(),
+    hintUrl: document.getElementById('f_hintUrl').value.trim(),
+  };
+
+  if(isLegacyType(code)){
+    Object.assign(row, getLegacyValues(code));
+    row.guideText = document.getElementById('guideTextArea').value;
+  } else {
+    row.openUrl = document.getElementById('f_openUrl').value.trim();
+    row.keyword = document.getElementById('f_keyword').value.trim();
+    row.answer = document.getElementById('f_answer').value.trim();
+    const tmpl = getCustomTemplate(code);
+    const n = tmpl ? countBlanks(tmpl.template) : 0;
+    for(let i=1;i<=n;i++){ row['blank'+i] = document.getElementById(`f_blank_${i}`).value.trim(); }
+  }
+
+  const result = tryAddCampaign(code, row);
+  if(!result.success){ alert(result.error); return; }
+  renderList();
+  document.getElementById('jsonOut').style.display='none';
+  document.getElementById('jsonActions').style.display='none';
+});
+
+document.getElementById('modeIndividual').addEventListener('click', ()=> setMode('individual'));
+document.getElementById('modeBulk').addEventListener('click', ()=> setMode('bulk'));
+function setMode(mode){
+  currentMode = mode;
+  document.getElementById('modeIndividual').classList.toggle('active', mode==='individual');
+  document.getElementById('modeBulk').classList.toggle('active', mode==='bulk');
+  document.getElementById('individualMode').style.display = mode==='individual' ? 'block':'none';
+  document.getElementById('bulkMode').style.display = mode==='bulk' ? 'block':'none';
+  document.getElementById('previewCard').style.display = mode==='individual' ? 'block':'none';
+  if(mode==='bulk'){ renderGrid(); refreshBulkGuideCard(); }
+}
+
+function refreshBulkGuideCard(){
+  const code = currentType();
+  const card = document.getElementById('bulkGuideCard');
+  if(!code || !isLegacyType(code)){ card.style.display='none'; return; }
+  card.style.display = 'block';
+
+  const sel = document.getElementById('bulkGuideNameSelect');
+  const options = getGuideOptions(code);
+  const selectedName = selectedGuideName[code] || defaultSelectedName(code);
+  sel.innerHTML = options.map(o=>`<option value="${o.name}"${o.name===selectedName?' selected':''}>${o.name}</option>`).join('');
+  document.getElementById('bulkGuideTextArea').value = getGuideTextByName(code, selectedName);
+  document.getElementById('bulkGuideSaveName').value = selectedName;
+  document.getElementById('bulkGuideSaveResult').innerHTML = '';
+}
+document.getElementById('bulkGuideNameSelect').addEventListener('change', ()=>{
+  const code = currentType();
+  const name = document.getElementById('bulkGuideNameSelect').value;
+  selectedGuideName[code] = name;
+  document.getElementById('bulkGuideTextArea').value = getGuideTextByName(code, name);
+  document.getElementById('bulkGuideSaveName').value = name;
+});
+
+document.getElementById('btnSaveGuideBulk').addEventListener('click', async ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  const name = document.getElementById('bulkGuideSaveName').value.trim();
+  if(!name){ alert('저장할 이름을 입력해주세요.'); return; }
+  const guideText = document.getElementById('bulkGuideTextArea').value;
+  const resEl = document.getElementById('bulkGuideSaveResult');
+  resEl.innerHTML = '저장 중...';
+  try{
+    const data = await saveGuideAs(code, name, guideText);
+    if(data.success){
+      resEl.innerHTML = `<div class="apiresult ok">✅ "${name}" 이름으로 저장되었습니다.</div>`;
+      refreshBulkGuideCard();
+      if(currentType()===code) refreshGuideTextArea(code); // 개별 등록 화면도 동기화
+    } else {
+      resEl.innerHTML = `<div class="apiresult err">❌ ${data.error||'저장 실패'}</div>`;
+    }
+  }catch(e){
+    resEl.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${e.message}</div>`;
+  }
+});
+
+document.getElementById('btnDeleteGuideBulk').addEventListener('click', async ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  const name = document.getElementById('bulkGuideNameSelect').value;
+  if(name.startsWith('기본값')){ alert('기본값은 삭제할 수 없습니다.'); return; }
+  if(!confirm(`"${name}" 저장본을 삭제할까요?`)) return;
+  const resEl = document.getElementById('bulkGuideSaveResult');
+  const data = await deleteGuideName(code, name);
+  resEl.innerHTML = data.success
+    ? `<div class="apiresult ok">✅ 삭제되었습니다.</div>`
+    : `<div class="apiresult err">❌ ${data.error||'삭제 실패'}</div>`;
+  refreshBulkGuideCard();
+});
+
+document.getElementById('btnResetGuideBulk').addEventListener('click', ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  document.getElementById('bulkGuideTextArea').value = getDefaultGuideOptions(code)[0].guideText;
+});
+
+const COMMON_BASE = [
+  {id:'startAt', label:'시작일', req:true},
+  {id:'endAt', label:'종료일', req:true},
+  {id:'totalQuota', label:'전체참여한도', req:true},
+  {id:'dailyQuota', label:'일참여한도', req:true},
+  {id:'hintUrl', label:'랜딩URL', req:false}
+];
+
+function getColumnMeta(typeCode){
+  if(isLegacyType(typeCode)){
+    const type = LEGACY_TYPES[typeCode];
+    return COMMON_BASE.concat(type.fields.map(f=>({id:f.id, label:f.label, req:!!f.req, selectOptions: f.type==='select'? f.options: null})));
+  }
+  const tmpl = getCustomTemplate(typeCode);
+  const n = tmpl ? countBlanks(tmpl.template) : 0;
+  const cols = COMMON_BASE.concat([
+    {id:'openUrl', label:'오픈URL(플레이스/상품)', req:true},
+    {id:'keyword', label:'키워드(,구분)', req:true},
+    {id:'answer', label:'정답', req:true},
+  ]);
+  for(let i=1;i<=n;i++){ cols.push({id:'blank'+i, label:`빈칸(${i})`, req:true}); }
+  return cols;
+}
+function getColumnOrder(typeCode){ return getColumnMeta(typeCode).map(c=>c.id); }
+
+function emptyGrid(typeCode, rows){
+  const n = getColumnMeta(typeCode).length;
+  return Array.from({length: rows}, ()=> Array(n).fill(''));
+}
+function getGrid(typeCode){
+  if(!gridByType[typeCode]) gridByType[typeCode] = emptyGrid(typeCode, 10);
+  return gridByType[typeCode];
+}
+
+let activeCell = {r:0, c:0};
+const fillHandleEl = document.createElement('div');
+fillHandleEl.className = 'fillhandle';
+
+function renderGrid(){
+  const typeCode = currentType();
+  if(!typeCode) return;
+  const meta = getColumnMeta(typeCode);
+  const grid = getGrid(typeCode);
+  const table = document.getElementById('gridTable');
+  table.innerHTML = '';
+
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  trh.appendChild(document.createElement('th'));
+  meta.forEach(c=>{
+    const th=document.createElement('th');
+    th.innerHTML = c.label + ' <span class="badge '+(c.req?'req">필수':'opt">선택')+'</span>';
+    trh.appendChild(th);
+  });
+  trh.appendChild(document.createElement('th'));
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  grid.forEach((rowArr, r)=>{
+    const tr=document.createElement('tr');
+    const tdNum=document.createElement('td'); tdNum.className='rownum'; tdNum.textContent=(r+1);
+    tr.appendChild(tdNum);
+
+    meta.forEach((c, ci)=>{
+      const td=document.createElement('td');
+      td.dataset.r = r; td.dataset.c = ci;
+      let input;
+      if(c.selectOptions){
+        input=document.createElement('select');
+        const blank=document.createElement('option'); blank.value=''; blank.textContent='(선택)'; input.appendChild(blank);
+        c.selectOptions.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; input.appendChild(op); });
+      } else {
+        input=document.createElement('input'); input.type='text';
+      }
+      input.value = rowArr[ci] || '';
+      input.addEventListener('input', ()=>{ grid[r][ci] = input.value; });
+      input.addEventListener('change', ()=>{ grid[r][ci] = input.value; });
+      input.addEventListener('paste', (e)=> handleGridPaste(e, r, ci));
+      input.addEventListener('focus', ()=>{ activeCell={r, c:ci}; td.appendChild(fillHandleEl); });
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+
+    const tdDel=document.createElement('td'); tdDel.className='delcell';
+    const delBtn=document.createElement('button'); delBtn.className='btn-danger'; delBtn.textContent='삭제';
+    delBtn.onclick=()=>{ grid.splice(r,1); renderGrid(); };
+    tdDel.appendChild(delBtn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  placeHandleAtActive();
+}
+
+function placeHandleAtActive(){
+  const table = document.getElementById('gridTable');
+  const td = table.querySelector(`td[data-r="${activeCell.r}"][data-c="${activeCell.c}"]`);
+  if(td) td.appendChild(fillHandleEl);
+}
+
+function handleGridPaste(e, r, c){
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if(!text) return;
+  let lines = text.replace(/\r/g,'').split('\n');
+  if(lines.length && lines[lines.length-1]==='') lines.pop();
+  const isMulti = lines.length>1 || lines[0].indexOf('\t')>=0;
+  if(!isMulti) return;
+
+  e.preventDefault();
+  const typeCode = currentType();
+  const grid = getGrid(typeCode);
+  const colCount = getColumnMeta(typeCode).length;
+  while(grid.length < r + lines.length){ grid.push(Array(colCount).fill('')); }
+
+  lines.forEach((line, li)=>{
+    const cells = line.split('\t');
+    cells.forEach((val, ci)=>{
+      const targetCol = c + ci;
+      if(targetCol < colCount){ grid[r+li][targetCol] = val; }
+    });
+  });
+  renderGrid();
+}
+
+let isFilling=false, fillSourceR=null, fillSourceC=null, fillSourceVal=null, fillTargetR=null;
+fillHandleEl.addEventListener('mousedown', (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  isFilling = true;
+  fillSourceR = activeCell.r; fillSourceC = activeCell.c;
+  fillSourceVal = getGrid(currentType())[fillSourceR][fillSourceC];
+  document.addEventListener('mousemove', onFillMouseMove);
+  document.addEventListener('mouseup', onFillMouseUp);
+});
+function onFillMouseMove(e){
+  if(!isFilling) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const td = el && el.closest ? el.closest('td[data-r]') : null;
+  if(td && Number(td.dataset.c)===fillSourceC){
+    fillTargetR = parseInt(td.dataset.r, 10);
+    document.querySelectorAll('table.grid td.selected').forEach(t=>t.classList.remove('selected'));
+    const r1=Math.min(fillSourceR,fillTargetR), r2=Math.max(fillSourceR,fillTargetR);
+    for(let rr=r1; rr<=r2; rr++){
+      const cell = document.querySelector(`table.grid td[data-r="${rr}"][data-c="${fillSourceC}"]`);
+      if(cell) cell.classList.add('selected');
+    }
+  }
+}
+function onFillMouseUp(){
+  if(!isFilling) return;
+  isFilling=false;
+  document.removeEventListener('mousemove', onFillMouseMove);
+  document.removeEventListener('mouseup', onFillMouseUp);
+  document.querySelectorAll('table.grid td.selected').forEach(t=>t.classList.remove('selected'));
+  if(fillTargetR===null || fillTargetR===fillSourceR){ fillTargetR=null; return; }
+  const grid = getGrid(currentType());
+  const r1=Math.min(fillSourceR,fillTargetR), r2=Math.max(fillSourceR,fillTargetR);
+  for(let rr=r1; rr<=r2; rr++){
+    if(rr===fillSourceR) continue;
+    if(rr<grid.length) grid[rr][fillSourceC] = fillSourceVal;
+  }
+  activeCell = {r:fillSourceR, c:fillSourceC};
+  fillTargetR = null;
+  renderGrid();
+}
+
+document.getElementById('btnAddRows').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  const grid = getGrid(typeCode);
+  const colCount = getColumnMeta(typeCode).length;
+  for(let i=0;i<10;i++) grid.push(Array(colCount).fill(''));
+  renderGrid();
+});
+
+document.getElementById('btnClearGrid').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  if(!confirm('현재 타입의 그리드 내용을 모두 지울까요?')) return;
+  gridByType[typeCode] = emptyGrid(typeCode, 10);
+  renderGrid();
+  document.getElementById('gridResult').innerHTML='';
+});
+
+document.getElementById('btnGridSubmit').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  const grid = getGrid(typeCode);
+  const cols = getColumnOrder(typeCode);
+  let ok=0; const errors=[];
+
+  grid.forEach((rowArr, i)=>{
+    if(rowArr.every(v=>!v || !String(v).trim())) return;
+    const row={};
+    cols.forEach((id, idx)=> row[id] = (rowArr[idx]||'').trim());
+    const result = tryAddCampaign(typeCode, row);
+    if(result.success) ok++;
+    else errors.push(`${i+1}행: ${result.error}`);
+  });
+
+  renderList();
+  document.getElementById('jsonOut').style.display='none';
+  document.getElementById('jsonActions').style.display='none';
+
+  const resEl=document.getElementById('gridResult');
+  let html = `<div class="apiresult ${errors.length? 'err':'ok'}">✅ 성공: ${ok}건 / ❌ 실패: ${errors.length}건`;
+  if(errors.length) html += "\n\n"+errors.join("\n");
+  html += "</div>";
+  resEl.innerHTML = html;
+});
+
+document.getElementById('btnDownloadXlsx').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.'); return; }
+  const meta = getColumnMeta(typeCode);
+  const grid = getGrid(typeCode);
+  const aoa = [meta.map(m=>m.label)].concat(grid);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, typeCode);
+  XLSX.writeFile(wb, `${typeCode}_원본데이터.xlsx`);
+});
+
+document.getElementById('fileUploadXlsx').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  const typeCode = currentType();
+  if(!file || !typeCode) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다.'); return; }
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    const data = new Uint8Array(evt.target.result);
+    const wb = XLSX.read(data, {type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+    const dataRows = rows.slice(1);
+    const colCount = getColumnMeta(typeCode).length;
+    const newGrid = dataRows.map(r=>{
+      const arr = Array(colCount).fill('');
+      for(let i=0;i<Math.min(colCount, r.length); i++){ arr[i] = (r[i]===undefined||r[i]===null) ? '' : String(r[i]); }
+      return arr;
+    });
+    while(newGrid.length < 10) newGrid.push(Array(colCount).fill(''));
+    gridByType[typeCode] = newGrid;
+    activeCell = {r:0, c:0};
+    renderGrid();
+    e.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function renderList(){
+  const wrap=document.getElementById('campaignList');
+  document.getElementById('listCount').textContent = campaigns.length;
+  if(campaigns.length===0){ wrap.innerHTML='<div class="empty">아직 추가된 캠페인이 없습니다.</div>'; return; }
+  wrap.innerHTML="";
+  campaigns.forEach((c,idx)=>{
+    const div=document.createElement('div'); div.className='list-item';
+    div.innerHTML = `<div>
+        <span class="type-pill">${c.type}</span><b>${c.code}</b>
+        <div class="meta">${c.title} · ${c.startAt} ~ ${c.endAt} · 정답: ${c.quiz[0].answer}</div>
+      </div>`;
+    const btn=document.createElement('button'); btn.className='btn-danger'; btn.textContent='삭제';
+    btn.onclick=()=>{ campaigns.splice(idx,1); renderList(); };
+    div.appendChild(btn);
+    wrap.appendChild(div);
+  });
+}
+
+function buildPayload(){ return { campaign: campaigns }; }
+
+document.getElementById('btnGenJson').addEventListener('click', ()=>{
+  if(campaigns.length===0){ alert('먼저 캠페인을 목록에 추가해주세요.'); return; }
+  const json = JSON.stringify(buildPayload(), null, 2);
+  const out=document.getElementById('jsonOut');
+  out.value=json; out.style.display='block';
+  document.getElementById('jsonActions').style.display='flex';
+});
+document.getElementById('btnCopy').addEventListener('click', ()=>{
+  const out=document.getElementById('jsonOut');
+  out.select(); document.execCommand('copy');
+  alert('JSON이 복사되었습니다.');
+});
+document.getElementById('btnDownload').addEventListener('click', ()=>{
+  const blob=new Blob([document.getElementById('jsonOut').value], {type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='registerCampaign_request.json';
+  a.click(); URL.revokeObjectURL(url);
+});
+
+async function initAll(){
+  await loadGuides();
+  await loadTemplates(); // loadTemplates 내부에서 renderTypeSelect -> onTypeChange가 호출되어 가이드도 함께 표시됨
+}
+initAll();
+</script>
+</body>
+</html>
