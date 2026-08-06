@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>캠페인 등록 도구 (레거시 타입 + 템플릿 타입)</title>
+<title>캠페인 등록 도구</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
@@ -70,7 +70,7 @@
 <header>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
-      <h1>캠페인 등록 도구 (레거시 타입 + 템플릿 타입)</h1>
+      <h1>QUIZ CLICK 캠페인 등록 도구</h1>
       <p>NPD0/NPN0/NPM0/NSN4는 기존처럼 마스킹·정답이 자동 계산됩니다. 그 외 타입은 시트에 저장된 템플릿의 빈칸을 채우는 방식입니다.</p>
     </div>
     <button class="btn btn-outline" id="btnRefreshAll" style="background:#fff;margin-top:2px;">🔄 새로고침</button>
@@ -82,6 +82,7 @@
   <div class="modetabs" style="display:flex;gap:10px;margin-bottom:18px;">
     <div class="tab active" id="modeIndividual" style="flex:0 0 160px;">개별 등록</div>
     <div class="tab" id="modeBulk" style="flex:0 0 200px;">일괄 등록 (엑셀형태)</div>
+    <div class="tab" id="modeMulti" style="flex:0 0 200px;">다문제 등록 (NPN0/NPM0)</div>
   </div>
 
   <div class="card">
@@ -124,7 +125,7 @@
         </div>
 
         <div class="card" id="legacyFieldsCard" style="display:none;">
-          <h2>가이드 문구 (1.2.3... 안내 단계)</h2>
+          <h2>가이드 문구</h2>
           <div class="hint" style="margin-bottom:8px;">
             이 부분만 자유롭게 수정할 수 있습니다. &lt;문제&gt;/&lt;힌트&gt; 부분은 마스킹·정답 자동계산이 그대로 적용되어 아래에 자동으로 붙습니다.
           </div>
@@ -215,6 +216,63 @@
             <button class="btn btn-primary" id="btnGridSubmit">이 데이터로 캠페인 일괄 생성 →</button>
           </div>
           <div id="gridResult"></div>
+        </div>
+      </div>
+
+      <!-- 다문제 등록 (NPN0/NPM0 전용) -->
+      <div id="multiMode" style="display:none;">
+        <div id="multiNotSupported" class="card" style="display:none;">
+          <h2>다문제 등록</h2>
+          <div class="hint">이 기능은 <b>NPN0(명소), NPM0(길찾기거리)</b> 타입에서만 사용할 수 있습니다. 위에서 타입을 바꿔주세요.</div>
+        </div>
+
+        <div id="multiGuideCard" class="card" style="display:none;">
+          <h2>가이드 문구 (1.2.3... 안내 단계)</h2>
+          <div class="hint" style="margin-bottom:8px;">모든 문제(문제#1, #2, #3...)에 공통으로 이 가이드가 적용됩니다.</div>
+          <div class="field" style="max-width:320px;">
+            <label>저장된 가이드 선택</label>
+            <select id="multiGuideNameSelect"></select>
+          </div>
+          <textarea id="multiGuideTextArea" rows="6" style="font-family:inherit;" readonly></textarea>
+          <div class="hint">가이드 수정/저장은 "개별 등록" 또는 "일괄 등록" 탭에서 해주세요. 여기서는 선택만 가능합니다.</div>
+        </div>
+
+        <div id="multiStartTypeCard" class="card" style="display:none;">
+          <h2>기준지점 (전체 문제 공통)</h2>
+          <div class="hint" style="margin-bottom:8px;">
+            여기서 한 번만 선택하면, 아래 모든 문제 칸이 같은 기준(명소 또는 출발지)으로 통일됩니다.
+          </div>
+          <div class="field" style="max-width:220px;">
+            <select id="multiStartTypeSelect">
+              <option value="명소">명소</option>
+              <option value="출발지">출발지</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="multiGridCard" class="card" style="display:none;">
+          <h2>다문제 일괄 입력</h2>
+          <div class="hint" style="margin-bottom:10px;">
+            한 행(캠페인) 안에 여러 개의 문제를 만들 수 있습니다. 문제별 칸이 비어있으면 그 문제는 건너뜁니다.
+            셀 클릭 후 엑셀에서 복사한 내용을 붙여넣기(Ctrl+V) 하면 여러 행이 한 번에 채워집니다.
+          </div>
+          <div class="actions" style="margin-bottom:10px;">
+            <button class="btn btn-outline" id="btnMultiAddQuestion">+ 문제 칸 추가</button>
+            <button class="btn btn-outline" id="btnMultiRemoveQuestion">- 문제 칸 제거</button>
+            <span class="hint" id="multiQuestionCountLabel" style="align-self:center;"></span>
+          </div>
+          <div class="gridwrap"><table class="grid" id="multiGridTable"></table></div>
+          <div class="actions">
+            <button class="btn btn-outline" id="btnMultiAddRows">+ 행 10개 추가</button>
+            <button class="btn btn-outline" id="btnMultiClearGrid">그리드 초기화</button>
+            <button class="btn btn-primary" id="btnMultiDownloadLegacyXlsx">📄 다문제 일괄등록 양식으로 다운로드</button>
+            <button class="btn btn-outline" id="btnMultiDownloadXlsx">원본데이터 백업 다운로드</button>
+            <label class="btn btn-outline" style="margin:0;">
+              엑셀 업로드(원본데이터)<input type="file" id="multiFileUploadXlsx" accept=".xlsx,.xls,.csv" style="display:none;">
+            </label>
+            <button class="btn btn-primary" id="btnMultiGridSubmit">이 데이터로 캠페인 일괄 생성 →</button>
+          </div>
+          <div id="multiGridResult"></div>
         </div>
       </div>
     </div>
@@ -596,6 +654,7 @@ function onTypeChange(){
   }
   updatePreview();
   if(currentMode==='bulk'){ renderGrid(); refreshBulkGuideCard(); }
+  if(currentMode==='multi'){ refreshMultiMode(); }
 }
 document.getElementById('typeSelect').addEventListener('change', onTypeChange);
 
@@ -858,15 +917,80 @@ document.getElementById('btnAdd').addEventListener('click', ()=>{
 
 document.getElementById('modeIndividual').addEventListener('click', ()=> setMode('individual'));
 document.getElementById('modeBulk').addEventListener('click', ()=> setMode('bulk'));
+document.getElementById('modeMulti').addEventListener('click', ()=> setMode('multi'));
 function setMode(mode){
   currentMode = mode;
   document.getElementById('modeIndividual').classList.toggle('active', mode==='individual');
   document.getElementById('modeBulk').classList.toggle('active', mode==='bulk');
+  document.getElementById('modeMulti').classList.toggle('active', mode==='multi');
   document.getElementById('individualMode').style.display = mode==='individual' ? 'block':'none';
   document.getElementById('bulkMode').style.display = mode==='bulk' ? 'block':'none';
+  document.getElementById('multiMode').style.display = mode==='multi' ? 'block':'none';
   document.getElementById('previewCard').style.display = mode==='individual' ? 'block':'none';
   if(mode==='bulk'){ renderGrid(); refreshBulkGuideCard(); }
+  if(mode==='multi'){ refreshMultiMode(); }
 }
+
+function refreshMultiMode(){
+  const code = currentType();
+  const supported = MULTI_TYPES[code];
+  document.getElementById('multiNotSupported').style.display = supported ? 'none' : 'block';
+  document.getElementById('multiGuideCard').style.display = supported ? 'block' : 'none';
+  document.getElementById('multiGridCard').style.display = supported ? 'block' : 'none';
+  document.getElementById('multiStartTypeCard').style.display = (supported && MULTI_TYPES[code].getPerQuestionFields) ? 'block' : 'none';
+  if(!supported) return;
+
+  if(MULTI_TYPES[code].getPerQuestionFields){
+    document.getElementById('multiStartTypeSelect').value = getMultiStartType(code);
+    // 아직 가이드를 따로 고른 적이 없다면, 기준지점에 맞는 기본값으로 맞춰줍니다.
+    if(!selectedGuideName[code]){
+      const matchingDefaultName = `기본값(${getMultiStartType(code)})`;
+      if(getGuideOptions(code).some(o=>o.name===matchingDefaultName)) selectedGuideName[code] = matchingDefaultName;
+    }
+  }
+
+  const sel = document.getElementById('multiGuideNameSelect');
+  const options = getGuideOptions(code);
+  const selectedName = selectedGuideName[code] || defaultSelectedName(code);
+  sel.innerHTML = options.map(o=>`<option value="${o.name}"${o.name===selectedName?' selected':''}>${o.name}</option>`).join('');
+  document.getElementById('multiGuideTextArea').value = getGuideTextByName(code, selectedName);
+
+  renderMultiGrid();
+}
+document.getElementById('multiStartTypeSelect').addEventListener('change', ()=>{
+  const code = currentType();
+  if(!MULTI_TYPES[code] || !MULTI_TYPES[code].getPerQuestionFields) return;
+  const newValue = document.getElementById('multiStartTypeSelect').value;
+  if(!confirm('기준지점을 바꾸면 지금 입력하신 문제별 데이터가 초기화됩니다. 계속할까요?')){
+    document.getElementById('multiStartTypeSelect').value = getMultiStartType(code); // 취소 시 원래 값으로 되돌림
+    return;
+  }
+  multiStartType[code] = newValue;
+  multiGridByType[code] = emptyMultiGrid(code, 10);
+
+  // 가이드 문구도 방금 고른 기준지점(명소/출발지)에 맞는 기본값으로 함께 맞춰줍니다.
+  const matchingDefaultName = `기본값(${newValue})`;
+  if(getGuideOptions(code).some(o=>o.name===matchingDefaultName)){
+    selectedGuideName[code] = matchingDefaultName;
+  }
+
+  renderMultiGrid();
+  refreshGuideDisplayOnly(code); // 가이드 드롭박스/텍스트만 다시 그림 (그리드는 이미 위에서 갱신함)
+});
+
+function refreshGuideDisplayOnly(code){
+  const sel = document.getElementById('multiGuideNameSelect');
+  const options = getGuideOptions(code);
+  const selectedName = selectedGuideName[code] || defaultSelectedName(code);
+  sel.innerHTML = options.map(o=>`<option value="${o.name}"${o.name===selectedName?' selected':''}>${o.name}</option>`).join('');
+  document.getElementById('multiGuideTextArea').value = getGuideTextByName(code, selectedName);
+}
+document.getElementById('multiGuideNameSelect').addEventListener('change', ()=>{
+  const code = currentType();
+  const name = document.getElementById('multiGuideNameSelect').value;
+  selectedGuideName[code] = name;
+  document.getElementById('multiGuideTextArea').value = getGuideTextByName(code, name);
+});
 
 function refreshBulkGuideCard(){
   const code = currentType();
@@ -930,6 +1054,481 @@ document.getElementById('btnResetGuideBulk').addEventListener('click', ()=>{
   const code = currentType();
   if(!code || !isLegacyType(code)) return;
   document.getElementById('bulkGuideTextArea').value = getDefaultGuideOptions(code)[0].guideText;
+});
+
+// ==================== 다문제 등록 (NPN0/NPM0 전용) ====================
+// 한 캠페인(행) 안에 문제#1, #2, #3...을 여러 개 만들 수 있습니다.
+const MULTI_TYPES = {
+  NPN0: {
+    perQuestionFields: [{ id:'spot', label:'명소' }],
+    // i번째 문제: "i번째 명소 입력하기" (자동 최단명 선택 없이, 입력한 순서 그대로 각각 문제화)
+    buildQuestion(i, common, qv, guideText){
+      const spot = (qv.spot||'').trim();
+      if(!spot) return null;
+      const place = (common.place_name||'').trim();
+      return {
+        question: `${guideText}\n\n<문제>  \n${i} 번째 명소 입력하기\n\n<힌트>\n플레이스명: ${maskText(place)}`,
+        answer: spot,
+        aux: ''
+      };
+    }
+  },
+  NPM0: {
+    // 기준지점(명소/출발지)은 문제마다 고르지 않고, 위에서 한 번만 선택해서 전체 문제에 공통 적용합니다.
+    getPerQuestionFields(startType){
+      if(startType==='출발지'){
+        return [
+          { id:'ref_name', label:'출발지명' },
+          { id:'distance_answer', label:'정답거리(m 또는 km)' }
+        ];
+      }
+      return [
+        { id:'order_n', label:'n번째' },
+        { id:'ref_name', label:'명소명' },
+        { id:'distance_answer', label:'정답거리(m 또는 km)' }
+      ];
+    },
+    buildQuestion(i, common, qv, guideText, startType){
+      const refName = (qv.ref_name||'').trim();
+      if(!refName) return null;
+      const place = (common.place_name||'').trim();
+      const answer = distanceRange(qv.distance_answer);
+      const maskedPlace = maskText(place);
+      let question;
+      if(startType==='출발지'){
+        question = `${guideText}\n\n<문제>  \n''가장 빠른'' 거리 입력 (@@@m, @.@km)\n\n<힌트>\n플레이스명: ${maskedPlace}\n출발지: ${refName}`;
+      } else {
+        const n = (qv.order_n||'').trim();
+        const maskedRef = halfMask(refName);
+        question = `${guideText}\n\n<문제>  \n''가장 빠른'' 거리 입력 (@@@m, @.@km)\n\n<힌트>\n플레이스명: ${maskedPlace}\n${n}번쨰 명소: ${maskedRef}`;
+      }
+      return { question, answer, aux: refName };
+    }
+  }
+};
+
+const MULTI_COMMON_COLS = [
+  {id:'startAt', label:'시작일', req:true},
+  {id:'endAt', label:'종료일', req:true},
+  {id:'totalQuota', label:'전체참여한도', req:true},
+  {id:'dailyQuota', label:'일참여한도', req:true},
+  {id:'hintUrl', label:'랜딩URL', req:false},
+  {id:'place_url', label:'플레이스URL', req:true},
+  {id:'keyword', label:'키워드(,구분)', req:true},
+  {id:'place_name', label:'플레이스명', req:true}
+];
+
+let multiQuestionCount = {}; // { typeCode: 문제개수 } 기본 3개로 시작
+let multiGridByType = {};
+let multiStartType = {}; // { 'NPM0': '명소'|'출발지' } - 전체 문제 공통 기준지점
+
+function getMultiQuestionCount(typeCode){
+  if(!multiQuestionCount[typeCode]) multiQuestionCount[typeCode] = 3;
+  return multiQuestionCount[typeCode];
+}
+function getMultiStartType(typeCode){
+  return multiStartType[typeCode] || '명소';
+}
+function getMultiPerQuestionFields(typeCode){
+  const type = MULTI_TYPES[typeCode];
+  if(!type) return [];
+  return type.getPerQuestionFields ? type.getPerQuestionFields(getMultiStartType(typeCode)) : type.perQuestionFields;
+}
+
+function getMultiColumnMeta(typeCode){
+  const type = MULTI_TYPES[typeCode];
+  if(!type) return MULTI_COMMON_COLS.slice();
+  const qCount = getMultiQuestionCount(typeCode);
+  const perQFields = getMultiPerQuestionFields(typeCode);
+  const cols = MULTI_COMMON_COLS.slice();
+  for(let q=1;q<=qCount;q++){
+    perQFields.forEach(f=>{
+      cols.push({ id:`q${q}_${f.id}`, label:`${f.label}(문제${q})`, req:false, selectOptions:f.select });
+    });
+  }
+  return cols;
+}
+function getMultiColumnOrder(typeCode){ return getMultiColumnMeta(typeCode).map(c=>c.id); }
+
+function emptyMultiGrid(typeCode, rows){
+  const n = getMultiColumnMeta(typeCode).length;
+  return Array.from({length: rows}, ()=> Array(n).fill(''));
+}
+function getMultiGrid(typeCode){
+  if(!multiGridByType[typeCode]) multiGridByType[typeCode] = emptyMultiGrid(typeCode, 10);
+  return multiGridByType[typeCode];
+}
+
+// 부작용 없이 다문제 캠페인 데이터 계산 (개별 등록/엑셀 내보내기 공용)
+function buildMultiCampaignData(typeCode, row){
+  const type = MULTI_TYPES[typeCode];
+  if(!type) return {success:false, error:'다문제는 NPN0/NPM0만 지원합니다.'};
+
+  const startAt=row.startAt, endAt=row.endAt;
+  const totalQuota=parseNum(row.totalQuota), dailyQuota=parseNum(row.dailyQuota);
+  if(!startAt || !endAt || isNaN(totalQuota) || isNaN(dailyQuota)){
+    return {success:false, error:'시작일/종료일/전체참여한도/일참여한도는 필수입니다.'};
+  }
+  if(!row.place_url || !row.keyword || !row.place_name){
+    return {success:false, error:'플레이스URL/키워드/플레이스명은 필수입니다.'};
+  }
+
+  const guideText = currentGuideText(typeCode);
+  const qCount = getMultiQuestionCount(typeCode);
+  const startType = getMultiStartType(typeCode);
+  const perQFields = getMultiPerQuestionFields(typeCode);
+  const quiz = [];
+  const aux = [];
+  for(let q=1;q<=qCount;q++){
+    const qv = {};
+    perQFields.forEach(f=>{ qv[f.id] = row[`q${q}_${f.id}`] || ''; });
+    let built;
+    try{ built = type.buildQuestion(q, row, qv, guideText, startType); }
+    catch(e){ return {success:false, error:`문제${q}: ${e.message}`}; }
+    if(!built) continue; // 그 문제 칸이 비어있으면 건너뜀
+    quiz.push({ id: quiz.length+1, question: built.question, answer: built.answer, keyword: splitKeywords(row.keyword) });
+    aux.push(built.aux || '');
+  }
+  if(quiz.length===0) return {success:false, error:'최소 1개 이상의 문제 칸을 입력해야 합니다.'};
+
+  const campaign = {
+    code: row.code || '', type: typeCode, title: autoTitle(row.keyword),
+    openUrl: row.place_url, startAt, endAt, totalQuota, dailyQuota, quiz
+  };
+  if(row.hintUrl){ campaign.hintUrl = [row.hintUrl]; }
+
+  return {success:true, campaign, aux};
+}
+
+function tryAddMultiCampaign(typeCode, row){
+  const result = buildMultiCampaignData(typeCode, row);
+  if(!result.success) return result;
+  const campaign = result.campaign;
+  campaign.code = campaign.code || autoCode(typeCode, campaigns.length);
+  if(campaigns.some(c=>c.code===campaign.code)) return {success:false, error:'캠페인 코드 중복: '+campaign.code};
+  campaigns.push(campaign);
+  return {success:true, campaign};
+}
+
+// ---- 다문제 그리드 렌더링 (일괄등록 그리드와 동일한 방식, 별도 상태로 관리) ----
+let multiActiveCell = {r:0, c:0};
+const multiFillHandleEl = document.createElement('div');
+multiFillHandleEl.className = 'fillhandle';
+
+function renderMultiGrid(){
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  const meta = getMultiColumnMeta(typeCode);
+  const grid = getMultiGrid(typeCode);
+  const table = document.getElementById('multiGridTable');
+  table.innerHTML = '';
+
+  document.getElementById('multiQuestionCountLabel').textContent = `현재 문제 칸: ${getMultiQuestionCount(typeCode)}개`;
+
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  trh.appendChild(document.createElement('th'));
+  meta.forEach(c=>{
+    const th=document.createElement('th');
+    th.innerHTML = c.label + ' <span class="badge '+(c.req?'req">필수':'opt">선택')+'</span>';
+    trh.appendChild(th);
+  });
+  trh.appendChild(document.createElement('th'));
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  grid.forEach((rowArr, r)=>{
+    const tr=document.createElement('tr');
+    const tdNum=document.createElement('td'); tdNum.className='rownum'; tdNum.textContent=(r+1);
+    tr.appendChild(tdNum);
+
+    meta.forEach((c, ci)=>{
+      const td=document.createElement('td');
+      td.dataset.r=r; td.dataset.c=ci;
+      let input;
+      if(c.selectOptions){
+        input=document.createElement('select');
+        const blank=document.createElement('option'); blank.value=''; blank.textContent='(선택)'; input.appendChild(blank);
+        c.selectOptions.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; input.appendChild(op); });
+      } else {
+        input=document.createElement('input'); input.type='text';
+        if(c.id==='hintUrl'){ input.setAttribute('list','hintUrlOptions'); }
+      }
+      input.value = rowArr[ci] || '';
+      input.addEventListener('input', ()=>{ grid[r][ci]=input.value; });
+      input.addEventListener('change', ()=>{ grid[r][ci]=input.value; });
+      input.addEventListener('paste', (e)=> handleMultiGridPaste(e, r, ci));
+      input.addEventListener('focus', ()=>{ multiActiveCell={r,c:ci}; td.appendChild(multiFillHandleEl); });
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+
+    const tdDel=document.createElement('td'); tdDel.className='delcell';
+    const delBtn=document.createElement('button'); delBtn.className='btn-danger'; delBtn.textContent='삭제';
+    delBtn.onclick=()=>{ grid.splice(r,1); renderMultiGrid(); };
+    tdDel.appendChild(delBtn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  placeMultiHandleAtActive();
+}
+
+function placeMultiHandleAtActive(){
+  const table = document.getElementById('multiGridTable');
+  const td = table.querySelector(`td[data-r="${multiActiveCell.r}"][data-c="${multiActiveCell.c}"]`);
+  if(td) td.appendChild(multiFillHandleEl);
+}
+
+function handleMultiGridPaste(e, r, c){
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if(!text) return;
+  let lines = text.replace(/\r/g,'').split('\n');
+  if(lines.length && lines[lines.length-1]==='') lines.pop();
+  const isMulti = lines.length>1 || lines[0].indexOf('\t')>=0;
+  if(!isMulti) return;
+
+  e.preventDefault();
+  const typeCode = currentType();
+  const grid = getMultiGrid(typeCode);
+  const colCount = getMultiColumnMeta(typeCode).length;
+  while(grid.length < r + lines.length){ grid.push(Array(colCount).fill('')); }
+
+  lines.forEach((line, li)=>{
+    const cells = line.split('\t');
+    cells.forEach((val, ci)=>{
+      const targetCol = c + ci;
+      if(targetCol < colCount){ grid[r+li][targetCol] = val; }
+    });
+  });
+  renderMultiGrid();
+}
+
+let multiIsFilling=false, multiFillSourceR=null, multiFillSourceC=null, multiFillSourceVal=null, multiFillTargetR=null;
+multiFillHandleEl.addEventListener('mousedown', (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  multiIsFilling = true;
+  multiFillSourceR = multiActiveCell.r; multiFillSourceC = multiActiveCell.c;
+  multiFillSourceVal = getMultiGrid(currentType())[multiFillSourceR][multiFillSourceC];
+  document.addEventListener('mousemove', onMultiFillMouseMove);
+  document.addEventListener('mouseup', onMultiFillMouseUp);
+});
+function onMultiFillMouseMove(e){
+  if(!multiIsFilling) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const td = el && el.closest ? el.closest('td[data-r]') : null;
+  if(td && Number(td.dataset.c)===multiFillSourceC){
+    multiFillTargetR = parseInt(td.dataset.r, 10);
+    document.querySelectorAll('#multiGridTable td.selected').forEach(t=>t.classList.remove('selected'));
+    const r1=Math.min(multiFillSourceR,multiFillTargetR), r2=Math.max(multiFillSourceR,multiFillTargetR);
+    for(let rr=r1; rr<=r2; rr++){
+      const cell = document.querySelector(`#multiGridTable td[data-r="${rr}"][data-c="${multiFillSourceC}"]`);
+      if(cell) cell.classList.add('selected');
+    }
+  }
+}
+function onMultiFillMouseUp(){
+  if(!multiIsFilling) return;
+  multiIsFilling=false;
+  document.removeEventListener('mousemove', onMultiFillMouseMove);
+  document.removeEventListener('mouseup', onMultiFillMouseUp);
+  document.querySelectorAll('#multiGridTable td.selected').forEach(t=>t.classList.remove('selected'));
+  if(multiFillTargetR===null || multiFillTargetR===multiFillSourceR){ multiFillTargetR=null; return; }
+  const grid = getMultiGrid(currentType());
+  const r1=Math.min(multiFillSourceR,multiFillTargetR), r2=Math.max(multiFillSourceR,multiFillTargetR);
+  for(let rr=r1; rr<=r2; rr++){
+    if(rr===multiFillSourceR) continue;
+    if(rr<grid.length) grid[rr][multiFillSourceC] = multiFillSourceVal;
+  }
+  multiActiveCell = {r:multiFillSourceR, c:multiFillSourceC};
+  multiFillTargetR = null;
+  renderMultiGrid();
+}
+
+document.getElementById('btnMultiAddQuestion').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  const oldMeta = getMultiColumnMeta(typeCode);
+  multiQuestionCount[typeCode] = getMultiQuestionCount(typeCode) + 1;
+  const newColCount = getMultiColumnMeta(typeCode).length;
+  const addedCols = newColCount - oldMeta.length;
+  const grid = getMultiGrid(typeCode);
+  grid.forEach(rowArr=>{ for(let i=0;i<addedCols;i++) rowArr.push(''); });
+  renderMultiGrid();
+});
+document.getElementById('btnMultiRemoveQuestion').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  if(getMultiQuestionCount(typeCode) <= 1){ alert('문제 칸은 최소 1개 있어야 합니다.'); return; }
+  const oldMeta = getMultiColumnMeta(typeCode);
+  multiQuestionCount[typeCode] = getMultiQuestionCount(typeCode) - 1;
+  const newColCount = getMultiColumnMeta(typeCode).length;
+  const removedCols = oldMeta.length - newColCount;
+  const grid = getMultiGrid(typeCode);
+  grid.forEach(rowArr=>{ rowArr.splice(rowArr.length-removedCols, removedCols); });
+  renderMultiGrid();
+});
+
+document.getElementById('btnMultiAddRows').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  const grid = getMultiGrid(typeCode);
+  const colCount = getMultiColumnMeta(typeCode).length;
+  for(let i=0;i<10;i++) grid.push(Array(colCount).fill(''));
+  renderMultiGrid();
+});
+
+document.getElementById('btnMultiClearGrid').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  if(!confirm('현재 타입의 다문제 그리드 내용을 모두 지울까요?')) return;
+  multiGridByType[typeCode] = emptyMultiGrid(typeCode, 10);
+  renderMultiGrid();
+  document.getElementById('multiGridResult').innerHTML='';
+});
+
+document.getElementById('btnMultiGridSubmit').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  const grid = getMultiGrid(typeCode);
+  const cols = getMultiColumnOrder(typeCode);
+  let ok=0; const errors=[];
+
+  grid.forEach((rowArr, i)=>{
+    if(rowArr.every(v=>!v || !String(v).trim())) return;
+    const row={};
+    cols.forEach((id, idx)=> row[id] = (rowArr[idx]||'').trim());
+    const result = tryAddMultiCampaign(typeCode, row);
+    if(result.success) ok++;
+    else errors.push(`${i+1}행: ${result.error}`);
+  });
+
+  renderList();
+  document.getElementById('jsonOut').style.display='none';
+  document.getElementById('jsonActions').style.display='none';
+
+  const resEl=document.getElementById('multiGridResult');
+  let html = `<div class="apiresult ${errors.length? 'err':'ok'}">✅ 성공: ${ok}건 / ❌ 실패: ${errors.length}건`;
+  if(errors.length) html += "\n\n"+errors.join("\n");
+  html += "</div>";
+  resEl.innerHTML = html;
+});
+
+document.getElementById('btnMultiDownloadXlsx').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다.'); return; }
+  const meta = getMultiColumnMeta(typeCode);
+  const grid = getMultiGrid(typeCode);
+  const aoa = [meta.map(m=>m.label)].concat(grid);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, typeCode);
+  XLSX.writeFile(wb, `${typeCode}_다문제_원본데이터.xlsx`);
+});
+
+document.getElementById('multiFileUploadXlsx').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  const typeCode = currentType();
+  if(!file || !MULTI_TYPES[typeCode]) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다.'); return; }
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    const data = new Uint8Array(evt.target.result);
+    const wb = XLSX.read(data, {type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+    const dataRows = rows.slice(1);
+    const colCount = getMultiColumnMeta(typeCode).length;
+    const newGrid = dataRows.map(r=>{
+      const arr = Array(colCount).fill('');
+      for(let i=0;i<Math.min(colCount, r.length); i++){ arr[i] = (r[i]===undefined||r[i]===null) ? '' : String(r[i]); }
+      return arr;
+    });
+    while(newGrid.length < 10) newGrid.push(Array(colCount).fill(''));
+    multiGridByType[typeCode] = newGrid;
+    multiActiveCell = {r:0, c:0};
+    renderMultiGrid();
+    e.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+// ---- 다문제 전용 "일괄등록 양식" 엑셀 (문제#1은 공통칸 재사용, 문제#2부터는 키워드/문제/정답/보조 4칸씩) ----
+function buildMultiLegacyRows(typeCode){
+  const grid = getMultiGrid(typeCode);
+  const cols = getMultiColumnOrder(typeCode);
+  const qCount = getMultiQuestionCount(typeCode);
+
+  const header = [
+    '#','광고주ID','캠페인타입','캠페인명','시작일시','종료일시','전체참여인원','일최대참여인원',
+    '광고단가','광고예산','힌트랜딩URL','플레이스URL','키워드','','','','',
+    '문제','정답','','','',''
+  ];
+  for(let q=2;q<=qCount;q++){ header.push('키워드','문제','정답','보조'); }
+
+  const dataRows = [];
+  const errors = [];
+  let rowNum = 1;
+
+  grid.forEach((rowArr, i)=>{
+    if(rowArr.every(v=>!v || !String(v).trim())) return;
+    const row = {};
+    cols.forEach((id, idx)=> row[id] = (rowArr[idx]||'').trim());
+
+    const result = buildMultiCampaignData(typeCode, row);
+    if(!result.success){ errors.push(`${i+1}행: ${result.error}`); return; }
+    const c = result.campaign;
+    const quiz = c.quiz;
+    const aux = result.aux;
+
+    const line = [
+      rowNum++, '', c.type, c.title,
+      toDateOrString(c.startAt), toDateOrString(c.endAt),
+      Number(c.totalQuota)||0, Number(c.dailyQuota)||0,
+      '', '',
+      row.hintUrl || '', c.openUrl, row.keyword,
+      '', '', '', '',
+      quiz[0] ? quiz[0].question : '', quiz[0] ? quiz[0].answer : '',
+      '', '', '', ''
+    ];
+    for(let q=2;q<=qCount;q++){
+      const idx = q-1;
+      if(quiz[idx]){
+        line.push(row.keyword, quiz[idx].question, quiz[idx].answer, aux[idx]||'');
+      } else {
+        line.push('', '', '', '');
+      }
+    }
+    dataRows.push(line);
+  });
+
+  const aoa = [[], ['접수날짜', new Date()], [], header].concat(dataRows);
+  return { aoa, errors };
+}
+
+document.getElementById('btnMultiDownloadLegacyXlsx').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다.'); return; }
+
+  const { aoa, errors } = buildMultiLegacyRows(typeCode);
+  const resEl = document.getElementById('multiGridResult');
+  if(aoa.length <= 4){
+    resEl.innerHTML = `<div class="apiresult err">❌ 다운로드할 데이터가 없습니다. 그리드를 채워주세요.</div>`;
+    return;
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, typeCode);
+  XLSX.writeFile(wb, `${typeCode}_다문제_일괄등록양식.xlsx`);
+
+  resEl.innerHTML = errors.length
+    ? `<div class="apiresult err">⚠️ ${aoa.length-4}건 다운로드 완료 (오류로 제외된 행 ${errors.length}건)<br>${errors.join('<br>')}</div>`
+    : `<div class="apiresult ok">✅ ${aoa.length-4}건 모두 정상적으로 다운로드되었습니다.</div>`;
 });
 
 const COMMON_BASE = [
