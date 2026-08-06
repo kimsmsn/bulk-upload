@@ -113,7 +113,13 @@
             <div class="field req"><label>일 참여 한도 <span class="badge req">필수</span></label>
               <input type="number" id="f_dailyQuota" placeholder="50"></div>
             <div class="field"><label>랜딩 URL <span class="badge opt">선택</span></label>
-              <input type="text" id="f_hintUrl" placeholder="https://..."></div>
+              <input type="text" id="f_hintUrl" list="hintUrlOptions" placeholder="직접 입력 또는 목록에서 선택"></div>
+
+            <datalist id="hintUrlOptions">
+              <option value="https://cdn.quizclick.io/quiz/public/support/v1/bridgenapp.html">네이버 앱</option>
+              <option value="https://cdn.quizclick.io/quiz/public/support/v1/bridgemap.html">네이버지도 앱</option>
+              <option value="https://link.naver.com/bridge?url=https%3A%2F%2Fm.naver.com%2F&dst=naversearchapp%3A%2F%2Finappbrowser%3Furl%3Dhttps%253A%252F%252Fm%252Enaver%252Ecom%252F%26version%3D10%26sourceReferer%3Dshare">네이버 링크</option>
+            </datalist>
           </div>
         </div>
 
@@ -1000,6 +1006,7 @@ function renderGrid(){
         c.selectOptions.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; input.appendChild(op); });
       } else {
         input=document.createElement('input'); input.type='text';
+        if(c.id==='hintUrl'){ input.setAttribute('list','hintUrlOptions'); }
       }
       input.value = rowArr[ci] || '';
       input.addEventListener('input', ()=>{ grid[r][ci] = input.value; });
