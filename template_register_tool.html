@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>캠페인 등록 도구</title>
+<title>캠페인 등록 도구 (레거시 타입 + 템플릿 타입)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
@@ -13,12 +13,12 @@
     --req:#c0392b; --req-bg:#fdecea;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;background:var(--bg);color:var(--text);}
+  body{margin:0;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;}
   header{background:var(--navy);color:#fff;padding:20px 28px;}
   header h1{margin:0;font-size:19px;}
   header p{margin:6px 0 0;font-size:12.5px;color:#b9c3da;}
   .wrap{max-width:1280px;margin:0 auto;padding:22px;}
-  .layout{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;align-items:start;}
+  .layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px;align-items:start;}
   @media (max-width:960px){.layout{grid-template-columns:1fr;}}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:18px;}
   .card h2{font-size:15px;margin:0 0 14px;padding-bottom:10px;border-bottom:2px solid var(--navy);color:var(--navy-2);}
@@ -70,7 +70,7 @@
 <header>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
-      <h1>QUIZ CLICK 캠페인 등록 도구</h1>
+      <h1>캠페인 등록 도구</h1>
     </div>
     <button class="btn btn-outline" id="btnRefreshAll" style="background:#fff;margin-top:2px;">🔄 새로고침</button>
   </div>
@@ -86,10 +86,13 @@
 
   <div class="card">
     <h2 style="border:none;margin:0;padding:0;">캠페인 타입</h2>
-    <div class="field" style="max-width:420px;margin-top:12px;">
-      <select id="typeSelect"></select>
+    <div style="display:flex;gap:16px;align-items:flex-start;margin-top:12px;flex-wrap:wrap;">
+      <div class="field" style="width:320px;flex:0 0 320px;margin-bottom:0;">
+        <select id="typeSelect"></select>
+      </div>
+      <div id="typeInfoBox" class="hint" style="flex:1;min-width:220px;align-self:center;">-</div>
     </div>
-    <div id="templatePreviewWrap" style="margin-top:10px;display:none;">
+    <div id="templatePreviewWrap" style="margin-top:14px;display:none;">
       <div class="preview-label">선택된 타입의 원본 템플릿</div>
       <div class="preview" id="rawTemplatePreview">-</div>
     </div>
@@ -174,7 +177,7 @@
 
       <div id="bulkMode" style="display:none;">
         <div class="card" id="bulkGuideCard" style="display:none;">
-          <h2>가이드 문구 (1.2.3... 안내 단계)</h2>
+          <h2>가이드 문구</h2>
           <div class="hint" style="margin-bottom:8px;">
             지금 선택된 타입으로 일괄 생성하면 <b>이 가이드 문구가 모든 행에 공통으로 적용</b>됩니다.
             수정 후 저장하면 개별 등록 화면에도 동일하게 반영됩니다.
@@ -226,7 +229,7 @@
         </div>
 
         <div id="multiGuideCard" class="card" style="display:none;">
-          <h2>가이드 문구 (1.2.3... 안내 단계)</h2>
+          <h2>가이드 문구</h2>
           <div class="hint" style="margin-bottom:8px;">모든 문제(문제#1, #2, #3...)에 공통으로 이 가이드가 적용됩니다.</div>
           <div class="field" style="max-width:320px;">
             <label>저장된 가이드 선택</label>
@@ -238,14 +241,16 @@
 
         <div id="multiStartTypeCard" class="card" style="display:none;">
           <h2>기준지점 (전체 문제 공통)</h2>
-          <div class="hint" style="margin-bottom:8px;">
-            여기서 한 번만 선택하면, 아래 모든 문제 칸이 같은 기준(명소 또는 출발지)으로 통일됩니다.
-          </div>
-          <div class="field" style="max-width:220px;">
-            <select id="multiStartTypeSelect">
-              <option value="명소">명소</option>
-              <option value="출발지">출발지</option>
-            </select>
+          <div style="display:flex;gap:16px;align-items:center;margin-top:12px;flex-wrap:wrap;">
+            <div class="field" style="width:220px;flex:0 0 220px;margin-bottom:0;">
+              <select id="multiStartTypeSelect">
+                <option value="명소">명소</option>
+                <option value="출발지">출발지</option>
+              </select>
+            </div>
+            <div class="hint" style="flex:1;min-width:220px;">
+              여기서 한 번만 선택하면, 아래 모든 문제 칸이 같은 기준(명소 또는 출발지)으로 통일됩니다. 바꾸면 그리드가 초기화됩니다.
+            </div>
           </div>
         </div>
 
@@ -643,6 +648,14 @@ function onTypeChange(){
   document.getElementById('legacyFieldsCard').style.display = legacy ? 'block' : 'none';
   document.getElementById('customFieldsCard').style.display = legacy ? 'none' : 'block';
   document.getElementById('templatePreviewWrap').style.display = legacy ? 'none' : 'block';
+
+  const infoBox = document.getElementById('typeInfoBox');
+  if(legacy){
+    const multiNote = MULTI_TYPES[code] ? ' · <b>다문제 등록</b> 탭에서 한 캠페인에 여러 문제도 만들 수 있습니다.' : '';
+    infoBox.innerHTML = `🔒 마스킹/정답이 자동 계산되는 레거시 타입입니다. 원본 데이터만 입력하면 문제·정답이 자동 완성됩니다.${multiNote}`;
+  } else {
+    infoBox.innerHTML = `📝 시트에 저장된 템플릿의 빈칸을 직접 채우는 타입입니다. 정답도 직접 입력합니다.`;
+  }
 
   if(legacy){
     renderLegacyFields(code);
