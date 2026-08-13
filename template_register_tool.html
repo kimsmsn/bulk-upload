@@ -102,7 +102,7 @@
     <h2 style="border:none;margin:0;padding:0;">광고주ID</h2>
     <div style="display:flex;gap:16px;align-items:flex-start;margin-top:12px;flex-wrap:wrap;">
       <div class="field" style="width:320px;flex:0 0 320px;margin-bottom:0;">
-        <input type="text" id="globalAdvertiserId" placeholder="예: jamonglab (선택)">
+        <input type="text" id="globalAdvertiserId" placeholder="예: redwhale (선택)">
       </div>
       <div class="hint" style="flex:1;min-width:220px;align-self:center;">
         여기에 입력하면 개별/일괄/다문제 등록 전체에 공통으로 적용됩니다. 엑셀 양식의 "광고주ID" 칸에 그대로 들어갑니다.
@@ -1827,14 +1827,20 @@ function buildLegacyRows(typeCode){
 
   return { aoa, errors };
 }
+// 시간대 변환 문제(자정이 오전 9시로 밀리는 등)를 원천적으로 피하기 위해,
+// Date 객체 대신 "yyyy-mm-dd" 순수 텍스트로만 넣습니다. 시간이 섞여 들어와도 날짜 부분만 잘라냅니다.
 function toDateOrString(s){
   if(!s) return s;
-  const d = new Date(String(s).trim().replace(' ', 'T'));
-  return isNaN(d.getTime()) ? s : d;
+  const str = String(s).trim();
+  const match = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(match){
+    const yyyy = match[1], mm = match[2].padStart(2,'0'), dd = match[3].padStart(2,'0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return str; // 형식이 안 맞으면 원본 그대로 (엑셀에서 확인하실 수 있게)
 }
 
-// 엑셀에 Date 객체로 들어간 셀은 기본적으로 "날짜+시간" 서식이 적용되므로,
-// 시간 없이 "yyyy-mm-dd" 형태로만 보이도록 날짜 타입 셀을 찾아서 서식을 강제로 지정합니다.
+// (구버전 호환용으로 남겨둠) 이제 날짜를 문자열로만 넣으므로 실제로는 아무 셀도 대상이 되지 않습니다.
 function setDateOnlyFormat(ws){
   Object.keys(ws).forEach(addr=>{
     if(addr[0]==='!') return; // 메타데이터(!ref 등)는 건너뜀
