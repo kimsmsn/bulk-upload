@@ -1573,7 +1573,7 @@ document.getElementById('btnMultiDownloadLegacyXlsx').addEventListener('click', 
   setDateOnlyFormat(ws);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, typeCode);
-  XLSX.writeFile(wb, `${typeCode}_다문제_일괄등록양식.xlsx`);
+  XLSX.writeFile(wb, buildExportFileName(typeCode, '_다문제_일괄등록양식.xlsx'));
 
   resEl.innerHTML = errors.length
     ? `<div class="apiresult err">⚠️ ${aoa.length-4}건 다운로드 완료 (오류로 제외된 행 ${errors.length}건)<br>${errors.join('<br>')}</div>`
@@ -1848,6 +1848,23 @@ function buildLegacyRows(typeCode){
 }
 // 시간대 변환 문제(자정이 오전 9시로 밀리는 등)를 원천적으로 피하기 위해,
 // Date 객체 대신 "yyyy-mm-dd" 순수 텍스트로만 넣습니다. 시간이 섞여 들어와도 날짜 부분만 잘라냅니다.
+// 파일명용 오늘 날짜 (yyyy-mm-dd)
+function todayDateStr(){
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+// 파일명에 못 쓰는 문자(\ / : * ? " < > |)는 안전하게 치환
+function safeFileName(s){
+  return String(s||'').replace(/[\\/:*?"<>|]/g, '_').trim();
+}
+function buildExportFileName(typeCode, suffix){
+  const advertiser = safeFileName(document.getElementById('globalAdvertiserId').value.trim()) || '광고사미정';
+  return `${todayDateStr()}_${typeCode}_${advertiser}${suffix}`;
+}
+
 function toDateOrString(s){
   if(!s) return s;
   const str = String(s).trim();
@@ -1884,7 +1901,7 @@ document.getElementById('btnDownloadLegacyXlsx').addEventListener('click', ()=>{
   setDateOnlyFormat(ws);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, typeCode);
-  XLSX.writeFile(wb, `${typeCode}_일괄등록양식.xlsx`);
+  XLSX.writeFile(wb, buildExportFileName(typeCode, '_일괄등록양식.xlsx'));
 
   resEl.innerHTML = errors.length
     ? `<div class="apiresult err">⚠️ ${aoa.length-4}건 다운로드 완료 (오류로 제외된 행 ${errors.length}건)<br>${errors.join('<br>')}</div>`
