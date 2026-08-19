@@ -67,12 +67,27 @@
 </style>
 </head>
 <body>
+
+<div id="lockScreen" style="position:fixed;inset:0;background:var(--navy);color:#fff;display:flex;
+  align-items:center;justify-content:center;flex-direction:column;z-index:9999;text-align:center;padding:20px;">
+  <h2 style="margin-bottom:8px;">캠페인 등록 도구</h2>
+  <p style="color:#b9c3da;font-size:13px;margin-bottom:20px;">식별키를 입력해주세요.</p>
+  <input type="password" id="lockKey" placeholder="식별키 입력"
+    style="width:260px;padding:10px 12px;border-radius:8px;border:1px solid #445071;font-size:14px;margin-bottom:10px;">
+  <button class="btn btn-primary" id="lockBtn" style="width:260px;">입장하기</button>
+  <div id="lockErr" style="color:#ffb4a8;font-size:12.5px;margin-top:12px;min-height:16px;"></div>
+</div>
+
+<div id="appRoot" style="display:none;">
 <header>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
       <h1>캠페인 등록 도구</h1>
     </div>
-    <button class="btn btn-outline" id="btnRefreshAll" style="background:#fff;margin-top:2px;">🔄 새로고침</button>
+    <div style="display:flex;gap:8px;margin-top:2px;">
+      <button class="btn btn-outline" id="btnRefreshAll" style="background:#fff;">🔄 새로고침</button>
+      <button class="btn btn-outline" id="btnLogout" style="background:#fff;">로그아웃</button>
+    </div>
   </div>
 </header>
 
@@ -318,6 +333,7 @@
       </div>
     </div>
   </div>
+</div>
 </div>
 
 <script>
@@ -1955,7 +1971,44 @@ async function initAll(){
   await loadGuides();
   await loadTemplates(); // loadTemplates 내부에서 renderTypeSelect -> onTypeChange가 호출되어 가이드도 함께 표시됨
 }
-initAll();
+
+// ==================== 로그인/로그아웃 ====================
+async function tryLogin(){
+  const key = document.getElementById('lockKey').value.trim();
+  const errEl = document.getElementById('lockErr');
+  if(!key){ errEl.textContent = '키를 입력해주세요.'; return; }
+  errEl.textContent = '확인 중...';
+  try{
+    const res = await fetch(`${TEMPLATE_API_URL}?action=login&key=${encodeURIComponent(key)}`);
+    const data = await res.json();
+    if(!data.success){ errEl.textContent = data.error || '유효하지 않은 키입니다.'; return; }
+    sessionStorage.setItem('crt_key', key);
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'block';
+    await initAll();
+  }catch(e){
+    errEl.textContent = '로그인 서버 호출 실패: ' + e.message;
+  }
+}
+document.getElementById('lockBtn').addEventListener('click', tryLogin);
+document.getElementById('lockKey').addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryLogin(); });
+
+function logout(){
+  sessionStorage.removeItem('crt_key');
+  document.getElementById('appRoot').style.display = 'none';
+  document.getElementById('lockScreen').style.display = 'flex';
+  document.getElementById('lockKey').value = '';
+  document.getElementById('lockErr').textContent = '';
+}
+document.getElementById('btnLogout').addEventListener('click', logout);
+
+// 같은 브라우저 탭에서 새로고침해도(sessionStorage 유지) 다시 로그인 안 해도 되게 자동 재시도
+(async function autoLoginFromSession(){
+  const saved = sessionStorage.getItem('crt_key');
+  if(!saved) return;
+  document.getElementById('lockKey').value = saved;
+  await tryLogin();
+})();
 
 document.getElementById('btnRefreshAll').addEventListener('click', async ()=>{
   const btn = document.getElementById('btnRefreshAll');
