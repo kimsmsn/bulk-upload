@@ -114,6 +114,37 @@
   </div>
 
   <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="border:none;margin:0;padding:0;">내 커스텀 타입 관리</h2>
+      <button class="btn btn-outline" id="btnToggleCustomTypeForm">+ 새 타입 만들기</button>
+    </div>
+    <div class="hint" style="margin-top:8px;">
+      여기서 만든 타입은 <b>나에게만</b> 보입니다. 마스킹/정답 자동계산 없이, 템플릿의 (1)(2)(3) 빈칸을 직접 채우는 방식입니다.
+    </div>
+
+    <div id="customTypeForm" style="display:none;margin-top:14px;">
+      <div class="row2">
+        <div class="field req"><label>타입코드 <span class="badge req">필수</span></label>
+          <input type="text" id="ct_code" placeholder="예: MYTYPE1"></div>
+        <div class="field"><label>타입명 <span class="badge opt">선택</span></label>
+          <input type="text" id="ct_name" placeholder="예: 나만의 유형"></div>
+      </div>
+      <div class="field req"><label>템플릿 내용 <span class="badge req">필수</span></label>
+        <textarea id="ct_template" rows="6" style="font-family:inherit;" placeholder="1. 검색어 복사하기 후 검색하러가기 클릭&#10;2.(1)&#10;3. '주변' > '명소' 순으로 탭 클릭"></textarea>
+        <div class="hint">빈칸은 (1), (2), (3)... 순서대로 넣어주세요. 등록할 때 그 자리에 입력한 내용으로 치환됩니다.</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="btnSaveCustomType">💾 저장</button>
+        <button class="btn btn-outline" id="btnCancelCustomType">취소</button>
+      </div>
+      <div id="customTypeSaveResult"></div>
+    </div>
+
+    <div class="preview-label" style="margin-top:14px;">내가 만든 타입 목록</div>
+    <div id="customTypeList" class="hint">아직 만든 타입이 없습니다.</div>
+  </div>
+
+  <div class="card">
     <h2 style="border:none;margin:0;padding:0;">광고주ID</h2>
     <div style="display:flex;gap:16px;align-items:flex-start;margin-top:12px;flex-wrap:wrap;">
       <div class="field" style="width:320px;flex:0 0 320px;margin-bottom:0;">
@@ -646,7 +677,8 @@ function substituteTemplate(template, blanks){
 
 async function loadTemplates(){
   try{
-    const res = await fetch(`${TEMPLATE_API_URL}?action=getTemplates`);
+    const owner = currentOwnerKey();
+    const res = await fetch(`${TEMPLATE_API_URL}?action=getTemplates&owner=${encodeURIComponent(owner)}`);
     const data = await res.json();
     CUSTOM_TEMPLATES = (data.success && data.templates) ? data.templates : [];
   }catch(e){
@@ -654,6 +686,87 @@ async function loadTemplates(){
     CUSTOM_TEMPLATES = [];
   }
   renderTypeSelect();
+  renderCustomTypeList();
+}
+
+// ==================== 내 커스텀 타입 관리 ====================
+document.getElementById('btnToggleCustomTypeForm').addEventListener('click', ()=>{
+  const form = document.getElementById('customTypeForm');
+  const showing = form.style.display !== 'none';
+  form.style.display = showing ? 'none' : 'block';
+  document.getElementById('btnToggleCustomTypeForm').textContent = showing ? '+ 새 타입 만들기' : '접기';
+});
+document.getElementById('btnCancelCustomType').addEventListener('click', ()=>{
+  document.getElementById('customTypeForm').style.display = 'none';
+  document.getElementById('btnToggleCustomTypeForm').textContent = '+ 새 타입 만들기';
+  document.getElementById('ct_code').value = '';
+  document.getElementById('ct_name').value = '';
+  document.getElementById('ct_template').value = '';
+  document.getElementById('customTypeSaveResult').innerHTML = '';
+});
+
+document.getElementById('btnSaveCustomType').addEventListener('click', async ()=>{
+  const code = document.getElementById('ct_code').value.trim();
+  const name = document.getElementById('ct_name').value.trim();
+  const template = document.getElementById('ct_template').value.trim();
+  const resEl = document.getElementById('customTypeSaveResult');
+
+  if(!code || !template){ alert('타입코드와 템플릿 내용은 필수입니다.'); return; }
+  if(isLegacyType(code)){ alert('NPD0/NPN0/NPM0/NSN4는 이미 내장된 타입 코드라 사용할 수 없습니다. 다른 코드를 입력해주세요.'); return; }
+
+  resEl.innerHTML = '저장 중...';
+  try{
+    const res = await fetch(TEMPLATE_API_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ type:'saveTemplate', code, name, template, owner: currentOwnerKey() })
+    });
+    const data = await res.json();
+    if(data.success){
+      CUSTOM_TEMPLATES = data.templates || [];
+      resEl.innerHTML = `<div class="apiresult ok">✅ "${code}" 타입이 저장되었습니다.</div>`;
+      renderTypeSelect();
+      renderCustomTypeList();
+    } else {
+      resEl.innerHTML = `<div class="apiresult err">❌ ${data.error||'저장 실패'}</div>`;
+    }
+  }catch(e){
+    resEl.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${e.message}</div>`;
+  }
+});
+
+async function deleteCustomType(code){
+  if(!confirm(`"${code}" 타입을 삭제할까요? 이 타입으로 등록 대기 목록에 이미 추가한 캠페인은 영향받지 않습니다.`)) return;
+  try{
+    const res = await fetch(TEMPLATE_API_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ type:'deleteTemplate', code, owner: currentOwnerKey() })
+    });
+    const data = await res.json();
+    if(data.success){
+      CUSTOM_TEMPLATES = data.templates || [];
+      renderTypeSelect();
+      renderCustomTypeList();
+    } else {
+      alert(data.error || '삭제 실패');
+    }
+  }catch(e){
+    alert('호출 실패: ' + e.message);
+  }
+}
+
+function renderCustomTypeList(){
+  const wrap = document.getElementById('customTypeList');
+  if(CUSTOM_TEMPLATES.length===0){ wrap.innerHTML = '아직 만든 타입이 없습니다.'; wrap.className='hint'; return; }
+  wrap.className = '';
+  wrap.innerHTML = '';
+  CUSTOM_TEMPLATES.forEach(t=>{
+    const div = document.createElement('div'); div.className = 'list-item';
+    div.innerHTML = `<div><span class="type-pill">${t.code}</span><b>${t.name}</b></div>`;
+    const btn = document.createElement('button'); btn.className='btn-danger'; btn.textContent='삭제';
+    btn.onclick = ()=> deleteCustomType(t.code);
+    div.appendChild(btn);
+    wrap.appendChild(div);
+  });
 }
 
 function isLegacyType(code){ return LEGACY_CODES.indexOf(code) !== -1; }
