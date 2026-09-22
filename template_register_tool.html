@@ -83,6 +83,7 @@
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
       <h1>캠페인 등록 도구</h1>
+      <p id="welcomeMsg" style="color:#b9c3da;font-size:13px;margin:4px 0 0;"></p>
     </div>
     <div style="display:flex;gap:8px;margin-top:2px;">
       <button class="btn btn-outline" id="btnRefreshAll" style="background:#fff;">🔄 새로고침</button>
@@ -133,6 +134,10 @@
         <textarea id="ct_template" rows="6" style="font-family:inherit;" placeholder="1. 검색어 복사하기 후 검색하러가기 클릭&#10;2.(1)&#10;3. '주변' > '명소' 순으로 탭 클릭"></textarea>
         <div class="hint">빈칸은 (1), (2), (3)... 순서대로 넣어주세요. 등록할 때 그 자리에 입력한 내용으로 치환됩니다.</div>
       </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:14px;cursor:pointer;">
+        <input type="checkbox" id="ct_isPublic">
+        모두에게 공개 (체크하면 다른 로그인 사용자도 이 타입을 등록에 쓸 수 있습니다)
+      </label>
       <div class="actions">
         <button class="btn btn-primary" id="btnSaveCustomType">💾 저장</button>
         <button class="btn btn-outline" id="btnCancelCustomType">취소</button>
@@ -702,6 +707,7 @@ document.getElementById('btnCancelCustomType').addEventListener('click', ()=>{
   document.getElementById('ct_code').value = '';
   document.getElementById('ct_name').value = '';
   document.getElementById('ct_template').value = '';
+  document.getElementById('ct_isPublic').checked = false;
   document.getElementById('customTypeSaveResult').innerHTML = '';
 });
 
@@ -709,6 +715,7 @@ document.getElementById('btnSaveCustomType').addEventListener('click', async ()=
   const code = document.getElementById('ct_code').value.trim();
   const name = document.getElementById('ct_name').value.trim();
   const template = document.getElementById('ct_template').value.trim();
+  const isPublic = document.getElementById('ct_isPublic').checked;
   const resEl = document.getElementById('customTypeSaveResult');
 
   if(!code || !template){ alert('타입코드와 템플릿 내용은 필수입니다.'); return; }
@@ -718,7 +725,7 @@ document.getElementById('btnSaveCustomType').addEventListener('click', async ()=
   try{
     const res = await fetch(TEMPLATE_API_URL, {
       method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ type:'saveTemplate', code, name, template, owner: currentOwnerKey() })
+      body: JSON.stringify({ type:'saveTemplate', code, name, template, owner: currentOwnerKey(), isPublic })
     });
     const data = await res.json();
     if(data.success){
@@ -761,10 +768,16 @@ function renderCustomTypeList(){
   wrap.innerHTML = '';
   CUSTOM_TEMPLATES.forEach(t=>{
     const div = document.createElement('div'); div.className = 'list-item';
-    div.innerHTML = `<div><span class="type-pill">${t.code}</span><b>${t.name}</b></div>`;
-    const btn = document.createElement('button'); btn.className='btn-danger'; btn.textContent='삭제';
-    btn.onclick = ()=> deleteCustomType(t.code);
-    div.appendChild(btn);
+    const badges = (t.isPublic ? ' <span class="badge kind">공개</span>' : '') + (t.mine===false ? ' <span class="badge opt">공유받음</span>' : '');
+    div.innerHTML = `<div><span class="type-pill">${t.code}</span><b>${t.name}</b>${badges}</div>`;
+    if(t.mine !== false){
+      const btn = document.createElement('button'); btn.className='btn-danger'; btn.textContent='삭제';
+      btn.onclick = ()=> deleteCustomType(t.code);
+      div.appendChild(btn);
+    } else {
+      const span = document.createElement('span'); span.className='hint'; span.textContent='관리자 공유';
+      div.appendChild(span);
+    }
     wrap.appendChild(div);
   });
 }
@@ -2153,6 +2166,7 @@ async function tryLogin(){
     sessionStorage.setItem('crt_name', data.name || '');
     document.getElementById('lockScreen').style.display = 'none';
     document.getElementById('appRoot').style.display = 'block';
+    document.getElementById('welcomeMsg').textContent = data.name ? `어서오세요 ${data.name}님!` : '';
     await initAll();
     applyCustomTypeAccess();
   }catch(e){
