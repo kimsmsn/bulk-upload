@@ -2162,11 +2162,12 @@ async function tryLogin(){
 document.getElementById('lockBtn').addEventListener('click', tryLogin);
 document.getElementById('lockKey').addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryLogin(); });
 
-// "내 커스텀 타입 관리"는 jamong 계정만 사용할 수 있습니다.
-const CUSTOM_TYPE_MANAGER_NAME = 'jamong';
+// "내 커스텀 타입 관리"는 이 목록에 있는 이름으로 로그인했을 때만 사용할 수 있습니다.
+// 식별키 시트의 B열(이름)에 적힌 값과 비교합니다 (대소문자 무관).
+const CUSTOM_TYPE_MANAGER_NAMES = ['jamong', '자몽랩'];
 function applyCustomTypeAccess(){
   const name = (sessionStorage.getItem('crt_name') || '').trim().toLowerCase();
-  const allowed = name === CUSTOM_TYPE_MANAGER_NAME.toLowerCase();
+  const allowed = CUSTOM_TYPE_MANAGER_NAMES.some(n => n.toLowerCase() === name);
   document.getElementById('customTypeManagerCard').style.display = allowed ? 'block' : 'none';
 }
 
