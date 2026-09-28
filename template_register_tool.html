@@ -224,8 +224,23 @@
             <input type="text" id="f_openUrl" placeholder="https://..."></div>
           <div class="field req"><label>키워드 (,구분) <span class="badge req">필수</span></label>
             <input type="text" id="f_keyword" placeholder="키워드1,키워드2"></div>
-          <div class="field req"><label>정답 <span class="badge req">필수</span></label>
-            <input type="text" id="f_answer" placeholder="정답 직접 입력"></div>
+          <div class="field req">
+            <label>정답 <span class="badge req">필수</span></label>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+              <select id="ans_mode" style="width:auto;">
+                <option value="manual">직접 입력</option>
+                <option value="blank">빈칸 값 사용</option>
+              </select>
+              <select id="ans_blankIndex" style="width:auto;display:none;"></select>
+              <select id="ans_extract" style="width:auto;display:none;">
+                <option value="full">전체</option>
+                <option value="prefix">앞 N자리</option>
+                <option value="suffix">뒤 N자리</option>
+              </select>
+              <input type="number" id="ans_n" min="1" value="4" style="width:60px;display:none;">
+            </div>
+            <input type="text" id="f_answer" placeholder="정답 직접 입력">
+          </div>
 
           <h2>빈칸 채우기</h2>
           <div id="blankFields"><div class="hint">이 타입은 빈칸이 없습니다.</div></div>
@@ -373,7 +388,7 @@
 </div>
 
 <script>
-const TEMPLATE_API_URL = "https://script.google.com/macros/s/AKfycbzKhAlGVY9EOEVHzd7qHpoLuuMZ2-LzjnNWXhoPWdN8LqmBdNkOlXQUWplAMP2yoSyq/exec";
+const TEMPLATE_API_URL = "https://script.google.com/macros/s/AKfycbz3aeyg6KdtZxxr8JOfHulxIYP87sSAw2w2WgsMEG-iqeIf-8CmDmXM-UbkEsholhqC/exec";
 
 function maskText(s){
   if(s===undefined||s===null) return s;
@@ -959,6 +974,25 @@ function applyBlankMasking(typeCode, blanks){
   return blanks.map((v, idx)=> maskByConfig(v, getBlankMask(typeCode, idx+1)));
 }
 
+// ==================== 정답 자동생성 (커스텀 타입 전용) ====================
+// { typeCode: {mode:'manual'|'blank', blankIndex:1, extract:'full'|'prefix'|'suffix', n:4} }
+let answerConfig = {};
+function getAnswerConfig(typeCode){
+  return answerConfig[typeCode] || { mode:'manual', blankIndex:1, extract:'full', n:4 };
+}
+function setAnswerConfig(typeCode, patch){
+  answerConfig[typeCode] = Object.assign({}, getAnswerConfig(typeCode), patch);
+}
+// row에는 blank1, blank2... (마스킹 전 원본 값)과 answer(직접입력값)가 들어있습니다.
+function computeAnswer(typeCode, row){
+  const cfg = getAnswerConfig(typeCode);
+  if(cfg.mode !== 'blank') return (row.answer||'').trim();
+  const raw = (row['blank'+cfg.blankIndex] || '').trim();
+  if(cfg.extract==='prefix') return raw.slice(0, cfg.n);
+  if(cfg.extract==='suffix') return raw.slice(-cfg.n);
+  return raw;
+}
+
 function renderBlankFields(tmpl){
   const wrap = document.getElementById('blankFields');
   wrap.innerHTML = '';
@@ -1004,7 +1038,44 @@ function renderBlankFields(tmpl){
     div.appendChild(input);
     wrap.appendChild(div);
   }
+  renderAnswerConfigUI(code, n);
 }
+
+// 정답 자동생성 UI: 빈칸 개수(n)에 맞춰 "어느 빈칸 값을 쓸지" 옵션을 채우고, 저장된 설정을 화면에 반영합니다.
+function renderAnswerConfigUI(code, n){
+  const modeSel = document.getElementById('ans_mode');
+  const blankSel = document.getElementById('ans_blankIndex');
+  const extractSel = document.getElementById('ans_extract');
+  const nInput = document.getElementById('ans_n');
+  const answerInput = document.getElementById('f_answer');
+
+  blankSel.innerHTML = '';
+  for(let i=1;i<=n;i++){ const op=document.createElement('option'); op.value=i; op.textContent=`빈칸(${i})`; blankSel.appendChild(op); }
+
+  const cfg = getAnswerConfig(code);
+  modeSel.value = n>0 ? cfg.mode : 'manual'; // 빈칸이 없는 타입이면 자동으로 직접입력만 가능
+  blankSel.value = cfg.blankIndex;
+  extractSel.value = cfg.extract;
+  nInput.value = cfg.n;
+
+  function refreshVisibility(){
+    const isBlankMode = modeSel.value==='blank';
+    blankSel.style.display = isBlankMode ? 'inline-block' : 'none';
+    extractSel.style.display = isBlankMode ? 'inline-block' : 'none';
+    nInput.style.display = (isBlankMode && extractSel.value!=='full') ? 'inline-block' : 'none';
+    answerInput.style.display = isBlankMode ? 'none' : 'block';
+  }
+  refreshVisibility();
+
+  modeSel.onchange = ()=>{
+    if(modeSel.value==='blank' && n===0){ alert('이 타입은 빈칸이 없어서 "빈칸 값 사용"을 고를 수 없습니다.'); modeSel.value='manual'; return; }
+    setAnswerConfig(code, { mode: modeSel.value }); refreshVisibility(); updatePreview();
+  };
+  blankSel.onchange = ()=>{ setAnswerConfig(code, { blankIndex: Number(blankSel.value) }); updatePreview(); };
+  extractSel.onchange = ()=>{ setAnswerConfig(code, { extract: extractSel.value }); refreshVisibility(); updatePreview(); };
+  nInput.oninput = ()=>{ setAnswerConfig(code, { n: Number(nInput.value)||1 }); updatePreview(); };
+}
+
 function getBlankValues(count){
   const vals = [];
   for(let i=1;i<=count;i++){
@@ -1045,10 +1116,13 @@ function updatePreview(){
       const tmpl = getCustomTemplate(code);
       if(!tmpl) return;
       const n = countBlanks(tmpl.template);
-      const blanks = applyBlankMasking(code, getBlankValues(n));
+      const rawBlanks = getBlankValues(n);
+      const blanks = applyBlankMasking(code, rawBlanks);
       const question = substituteTemplate(tmpl.template, blanks);
       const keyword = document.getElementById('f_keyword').value;
-      const answer = document.getElementById('f_answer').value;
+      const blankRow = {}; rawBlanks.forEach((v,idx)=> blankRow['blank'+(idx+1)] = v);
+      blankRow.answer = document.getElementById('f_answer').value;
+      const answer = computeAnswer(code, blankRow);
       document.getElementById('prevTitle').textContent = autoTitle(keyword);
       document.getElementById('prevQuestion').textContent = question;
       document.getElementById('prevAnswer').textContent = answer || '-';
@@ -1081,7 +1155,7 @@ function buildCampaignData(typeCode, row){
   } else {
     const tmpl = getCustomTemplate(typeCode);
     if(!tmpl) return {success:false, error:'선택된 타입의 템플릿을 찾을 수 없습니다.'};
-    if(!row.openUrl || !row.keyword || !row.answer) return {success:false, error:'오픈URL/키워드/정답은 필수입니다.'};
+    if(!row.openUrl || !row.keyword) return {success:false, error:'오픈URL/키워드는 필수입니다.'};
     const n = countBlanks(tmpl.template);
     const blanks = [];
     for(let i=1;i<=n;i++){
@@ -1089,8 +1163,10 @@ function buildCampaignData(typeCode, row){
       if(!v) return {success:false, error:`빈칸 (${i}) 내용이 비어있습니다.`};
       blanks.push(v);
     }
+    const answer = computeAnswer(typeCode, row);
+    if(!answer) return {success:false, error:'정답을 확인할 수 없습니다. (직접 입력 또는 빈칸 값 설정을 확인해주세요)'};
     const question = substituteTemplate(tmpl.template, applyBlankMasking(typeCode, blanks));
-    built = { question, answer: row.answer, title: autoTitle(row.keyword) };
+    built = { question, answer, title: autoTitle(row.keyword) };
     openUrl = row.openUrl;
     keyword = row.keyword;
     imageUrl = '';
@@ -1790,7 +1866,7 @@ function getColumnMeta(typeCode){
   const cols = COMMON_BASE.concat([
     {id:'openUrl', label:'오픈URL(플레이스/상품)', req:true},
     {id:'keyword', label:'키워드(,구분)', req:true},
-    {id:'answer', label:'정답', req:true},
+    {id:'answer', label:'정답', req: getAnswerConfig(typeCode).mode!=='blank', isAnswer:true},
   ]);
   for(let i=1;i<=n;i++){ cols.push({id:'blank'+i, label:`빈칸(${i})`, req:true, blankIndex:i}); }
   return cols;
@@ -1845,6 +1921,38 @@ function renderGrid(){
       nInput.addEventListener('input', ()=>{ setBlankMask(typeCode, c.blankIndex, { n: Number(nInput.value)||1 }); });
       maskRow.appendChild(maskSelect); maskRow.appendChild(nInput);
       th.appendChild(maskRow);
+    }
+    if(c.isAnswer){
+      const n = countBlanks((getCustomTemplate(typeCode)||{}).template||'');
+      const ansRow = document.createElement('div');
+      ansRow.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px;flex-wrap:wrap;';
+      const modeSel = document.createElement('select'); modeSel.style.cssText='width:auto;padding:2px 4px;font-size:11px;font-weight:400;';
+      [['manual','직접 입력'],['blank','빈칸 값 사용']].forEach(([v,label])=>{ const op=document.createElement('option'); op.value=v; op.textContent=label; modeSel.appendChild(op); });
+      const blankSel = document.createElement('select'); blankSel.style.cssText='width:auto;padding:2px 4px;font-size:11px;font-weight:400;';
+      for(let i=1;i<=n;i++){ const op=document.createElement('option'); op.value=i; op.textContent=`빈칸(${i})`; blankSel.appendChild(op); }
+      const extractSel = document.createElement('select'); extractSel.style.cssText='width:auto;padding:2px 4px;font-size:11px;font-weight:400;';
+      [['full','전체'],['prefix','앞N'],['suffix','뒤N']].forEach(([v,label])=>{ const op=document.createElement('option'); op.value=v; op.textContent=label; extractSel.appendChild(op); });
+      const nInput2 = document.createElement('input'); nInput2.type='number'; nInput2.min='1'; nInput2.style.cssText='width:40px;padding:2px 4px;font-size:11px;';
+
+      const acfg = getAnswerConfig(typeCode);
+      modeSel.value = n>0 ? acfg.mode : 'manual';
+      blankSel.value = acfg.blankIndex; extractSel.value = acfg.extract; nInput2.value = acfg.n;
+      const refreshAns = ()=>{
+        const isBlank = modeSel.value==='blank';
+        blankSel.style.display = isBlank ? 'inline-block' : 'none';
+        extractSel.style.display = isBlank ? 'inline-block' : 'none';
+        nInput2.style.display = (isBlank && extractSel.value!=='full') ? 'inline-block' : 'none';
+      };
+      refreshAns();
+      modeSel.addEventListener('change', ()=>{
+        if(modeSel.value==='blank' && n===0){ alert('이 타입은 빈칸이 없어서 "빈칸 값 사용"을 고를 수 없습니다.'); modeSel.value='manual'; return; }
+        setAnswerConfig(typeCode, { mode: modeSel.value }); refreshAns(); renderGrid();
+      });
+      blankSel.addEventListener('change', ()=>{ setAnswerConfig(typeCode, { blankIndex: Number(blankSel.value) }); });
+      extractSel.addEventListener('change', ()=>{ setAnswerConfig(typeCode, { extract: extractSel.value }); refreshAns(); });
+      nInput2.addEventListener('input', ()=>{ setAnswerConfig(typeCode, { n: Number(nInput2.value)||1 }); });
+      ansRow.appendChild(modeSel); ansRow.appendChild(blankSel); ansRow.appendChild(extractSel); ansRow.appendChild(nInput2);
+      th.appendChild(ansRow);
     }
     trh.appendChild(th);
   });
