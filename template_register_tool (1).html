@@ -1,0 +1,3521 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>캠페인 등록 도구</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy:#1b2a4a; --navy-2:#2f3a56;
+    --accent:#f5871f; --accent-2:#e0740f;
+    --brand:#6d5ef0; --brand-ink:#4338ca; --brand-soft:#eeecff;
+    --bg:#f6f6f9; --card:#ffffff; --line:#e9ebf1; --text:#1f2430; --muted:#8a90a0;
+    --req:#d6453d; --req-bg:#fdecea;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;}
+
+  /* ---- 앱 셸: 좌측 사이드바 + 우측 본문 ---- */
+  .app-shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh;}
+  .sidebar{background:#fff;border-right:1px solid var(--line);padding:18px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16.5px;color:var(--text);margin:2px 6px 16px;}
+  .brand .logo{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#8a7dff,#5b4ee8);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .profile{display:flex;align-items:center;gap:10px;background:#f2f0ff;border:1px solid #e3deff;border-radius:12px;padding:10px 10px 10px 12px;margin-bottom:14px;}
+  .avatar{width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+  .pname{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pmeta{font-size:11px;color:var(--muted);margin-top:1px;}
+  .profile .logout{margin-left:auto;flex:0 0 32px;width:32px;height:32px;border:none;background:#fff;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(16,24,40,.08);}
+  .profile .logout:hover{background:#f6f5ff;}
+  .nav-caption{font-size:11px;color:#a3a9b8;font-weight:600;margin:14px 10px 6px;letter-spacing:.2px;}
+  .sidenav-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;cursor:pointer;font-size:13.5px;font-weight:600;color:#59607a;margin-bottom:2px;}
+  .sidenav-item svg{width:18px;height:18px;flex:0 0 18px;}
+  .sidenav-item small{display:block;font-weight:400;font-size:11px;color:#9aa0b0;margin-top:1px;}
+  .sidenav-item:not(.active):hover{background:#f5f6fa;}
+  .sidenav-item.active{background:var(--brand-soft);color:var(--brand-ink);}
+  .app-main{min-width:0;padding:16px 24px 40px;}
+  .topbar{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;min-height:56px;}
+  .crumb{font-size:13px;color:#6b7186;}
+  .crumb .sep{margin:0 9px;color:#c3c8d4;}
+  .crumb b{color:var(--text);font-weight:600;}
+  .topbar-right{display:flex;align-items:center;gap:14px;}
+  .welcome{font-size:12.5px;color:#6b7186;}
+  @media (max-width:900px){
+    .app-shell{grid-template-columns:1fr;}
+    .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);}
+    .app-main{padding:14px 12px 30px;}
+  }
+
+  /* ---- 레이아웃/카드 ---- */
+  .layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px;align-items:start;}
+  @media (max-width:960px){.layout{grid-template-columns:1fr;}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin-bottom:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+  .card h2{font-size:15px;font-weight:700;margin:0 0 14px;color:var(--text);}
+  .card h2:not(:first-child){margin-top:22px;}
+
+  /* ---- 폼 ---- */
+  .field{margin-bottom:12px;}
+  .field label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-bottom:5px;color:#2f3647;}
+  .badge{font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;}
+  .badge.req{background:#fdecea;color:#c0392b;}
+  .badge.opt{background:#eef0f4;color:#6b7280;}
+  .badge.kind{background:var(--brand-soft);color:var(--brand-ink);}
+  input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{
+    width:100%;padding:9px 11px;border:1px solid #d9dde6;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;color:var(--text);
+  }
+  input[type=text]:focus,input[type=number]:focus,input[type=date]:focus,input[type=password]:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(109,94,240,.14);}
+  input[type=checkbox]{accent-color:var(--brand);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5;}
+
+  /* ---- 버튼 ---- */
+  .btn{appearance:none;border:1px solid transparent;border-radius:6px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .12s,border-color .12s;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent-2);}
+  .btn-outline{background:#fff;border-color:#d5d9e2;color:#3a4152;}
+  .btn-outline:hover{background:#f6f7fa;border-color:#c4c9d6;}
+  .btn:disabled{opacity:.6;cursor:default;}
+  .btn:focus{outline:none;}
+  .btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+  .btn-danger{background:#fff;border:1px solid #e6a9a4;color:#c0392b;padding:4px 9px;font-size:11px;border-radius:5px;cursor:pointer;}
+  .btn-danger:hover{background:#fdf2f1;}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+
+  /* ---- 미리보기/목록 ---- */
+  .preview{white-space:pre-wrap;font-size:12.5px;background:#f8f9fc;border:1px solid var(--line);border-radius:8px;padding:12px;line-height:1.55;color:#2f3647;min-height:60px;}
+  .preview-label{font-size:11.5px;font-weight:700;color:#59607a;margin:12px 0 4px;}
+  .list-item{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;background:#fafbfd;}
+  .list-item .meta{color:var(--muted);font-size:11px;margin-top:2px;}
+  .type-pill{display:inline-block;font-size:10.5px;font-weight:700;background:var(--brand-soft);color:var(--brand-ink);padding:2px 8px;border-radius:10px;margin-right:6px;}
+  #jsonOut{width:100%;height:220px;font-family:Consolas,Menlo,monospace;font-size:11.5px;}
+  .empty{color:var(--muted);font-size:12.5px;padding:10px 0;}
+  .apiresult{font-size:12px;margin-top:10px;padding:10px 12px;border-radius:8px;white-space:pre-wrap;}
+  .apiresult.ok{background:#eafaf0;color:#166534;}
+  .apiresult.err{background:#fdecea;color:#991b1b;}
+
+  /* ---- 도움말(?) 버튼 + 안내 창 ---- */
+  .helpbtn{width:20px;height:20px;border-radius:50%;border:1px solid #c9c4fa;background:var(--brand-soft);color:var(--brand-ink);font-size:12px;font-weight:700;cursor:pointer;margin-left:8px;align-items:center;justify-content:center;padding:0;vertical-align:middle;font-family:inherit;}
+  .helpbtn:hover{background:#e0dcff;}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(20,24,40,.45);z-index:9000;align-items:center;justify-content:center;padding:20px;}
+  .modal{background:#fff;border-radius:16px;width:660px;max-width:100%;max-height:calc(100vh - 40px);display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(16,24,40,.28);}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--line);font-size:16px;font-weight:700;}
+  .modal-close{border:none;background:transparent;font-size:17px;cursor:pointer;color:var(--muted);width:32px;height:32px;border-radius:8px;}
+  .modal-close:hover{background:#f1f2f6;}
+  .modal-body{padding:4px 24px 6px;overflow:auto;}
+  .modal-foot{padding:14px 24px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;}
+  .howto-steps{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:16px;}
+  .howto-steps li{display:flex;gap:12px;align-items:flex-start;}
+  .howto-steps .n{flex:0 0 24px;height:24px;border-radius:50%;background:var(--brand-soft);color:var(--brand-ink);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+  .howto-steps b{font-size:13.5px;}
+  .howto-steps p{margin:3px 0 0;font-size:12.5px;color:#59607a;line-height:1.65;}
+  .howto .tag{background:var(--brand-soft);color:var(--brand-ink);border-radius:5px;padding:1px 6px;font-size:12px;font-weight:600;white-space:nowrap;}
+  .howto kbd{background:#f1f2f6;border:1px solid #dfe2ea;border-radius:4px;padding:0 5px;font-size:11.5px;font-family:inherit;}
+  .howto-tips{margin-top:20px;background:#f8f9fc;border:1px solid var(--line);border-radius:10px;padding:13px 16px;font-size:12.5px;color:#59607a;line-height:1.75;}
+  .howto-tips b{color:var(--text);}
+
+  /* ---- 임시저장 안내 / 토스트 / 잔액 알림 ---- */
+  .draft-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#f7f5ff;border-color:#e3deff;padding:14px 18px;flex-wrap:wrap;}
+  .draft-banner b{font-size:13.5px;}
+  .draft-banner .sub{display:block;font-size:12px;color:#59607a;margin-top:2px;}
+  .draft-banner .db-actions{display:flex;gap:8px;}
+  .draft-status{margin-left:auto;align-self:center;font-size:11.5px;color:var(--muted);}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1f2430;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:9500;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;}
+  .toast.show{opacity:1;}
+  .ba-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .ba-ic{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex:0 0 36px;}
+  .ba-ic.w{background:#fff4dc;color:#92580a;}
+  .ba-ic.e{background:#fdecea;color:#b42318;}
+  .ba-title{font-size:16px;font-weight:700;}
+  .ba-lab{font-size:12.5px;color:var(--muted);}
+  .ba-amt{font-size:26px;font-weight:700;line-height:1.3;}
+  .ba-amt small{font-size:12px;font-weight:400;color:var(--muted);}
+  .ba-body{font-size:14px;line-height:1.65;margin:10px 0 4px;}
+  .ba-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid #f0f2f6;font-size:13.5px;}
+  .ba-row:last-child{border-bottom:none;}
+  .ba-row .nm{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ba-row .am{color:#59607a;}
+  .ba-tag{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:8px;white-space:nowrap;}
+  .ba-tag.w{background:#fff4dc;color:#92580a;}
+  .ba-tag.e{background:#fdecea;color:#b42318;}
+
+  /* ---- 잔액 데이터 점검 ---- */
+  .bw-item{font-size:12.5px;line-height:1.6;padding:7px 0;border-bottom:1px solid #f0f2f6;color:#2f3647;}
+  .bw-item:last-child{border-bottom:none;}
+
+  /* ---- 일괄 등록 입력 검사 ---- */
+  .gridcheck{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:#fcfcfe;}
+  .gc-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .gc-chips{display:flex;gap:8px;flex-wrap:wrap;flex:1;}
+  .gc-chip{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:8px;}
+  .gc-chip.e{background:#fdecea;color:#b42318;}
+  .gc-chip.w{background:#fff4dc;color:#92580a;}
+  .gc-chip.ok{background:#eaf7ee;color:#1a7f3c;}
+  .gc-list{margin-top:10px;}
+  .gc-item{display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;border:none;background:transparent;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--text);font-family:inherit;line-height:1.5;}
+  .gc-item:hover{background:#f3f4f9;}
+  .gc-item .ic{flex:0 0 auto;font-weight:700;}
+  .gc-item.e .ic{color:#d6453d;}
+  .gc-item.w .ic{color:#e0830f;}
+  .gc-more{font-size:12px;color:var(--brand-ink);background:none;border:none;cursor:pointer;padding:4px;font-family:inherit;}
+  .gc-preview{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px;font-size:12.5px;}
+  .gc-preview .gc-ph{font-size:11.5px;color:var(--muted);margin-bottom:6px;}
+  .gc-preview .gc-lab{font-size:11.5px;font-weight:700;color:#59607a;margin:8px 0 3px;}
+  .gc-preview .gc-box{white-space:pre-wrap;background:#f8f9fc;border:1px solid var(--line);border-radius:8px;padding:9px 11px;line-height:1.55;}
+  .gc-preview .gc-warn{margin-top:4px;color:#b45309;font-size:12px;}
+  table.grid tbody tr:nth-child(n) td.cell-err input,table.grid tbody tr:nth-child(n) td.cell-err select{background:#fdecea;box-shadow:inset 0 0 0 1.5px #e57368;}
+  table.grid tbody tr:nth-child(n) td.cell-warn input,table.grid tbody tr:nth-child(n) td.cell-warn select{background:#fff6e0;box-shadow:inset 0 0 0 1.5px #f0b24b;}
+
+  /* ---- 권한 관리 표 ---- */
+  table.permtable{width:100%;border-collapse:collapse;font-size:13px;}
+  .permtable th{text-align:left;font-size:11.5px;color:#59607a;font-weight:700;padding:10px 14px;background:#f6f7fb;border-bottom:1px solid var(--line);}
+  .permtable td{padding:11px 14px;border-bottom:1px solid #f0f2f6;}
+  .permtable tr:last-child td{border-bottom:none;}
+  .permtable th.c,.permtable td.c{text-align:center;width:130px;}
+  .permtable input[type=checkbox]{width:17px;height:17px;cursor:pointer;}
+  .permtable input[type=checkbox]:disabled{cursor:default;opacity:.55;}
+  .permtable .rowno{font-size:11px;color:var(--muted);margin-left:6px;}
+
+  /* ---- 엑셀형 그리드 ---- */
+  .gridwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;}
+  table.grid{border-collapse:collapse;font-size:12px;min-width:100%;}
+  table.grid th,table.grid td{border:1px solid #edeff4;padding:0;position:relative;}
+  table.grid th{background:#f6f7fb;color:#3a4152;font-size:11.5px;font-weight:700;padding:9px 8px;white-space:nowrap;}
+  table.grid td input,table.grid td select{border:none;border-radius:0;padding:7px 9px;font-size:12px;min-width:120px;background:#fff;}
+  table.grid td input:focus,table.grid td select:focus{box-shadow:none;outline:2px solid var(--brand);outline-offset:-2px;}
+  table.grid tbody tr:nth-child(even) td input{background:#fafbfd;}
+  table.grid td.rownum{background:#f6f7fb;color:var(--muted);text-align:center;font-weight:700;padding:0 8px;min-width:30px;}
+  table.grid td.delcell{text-align:center;background:#fafbfd;}
+  .fillhandle{position:absolute;width:8px;height:8px;background:var(--brand);border:1px solid #fff;box-shadow:0 0 0 1px var(--brand);cursor:crosshair;bottom:-4px;right:-4px;z-index:3;}
+  table.grid td.selected{outline:2px solid var(--brand);outline-offset:-2px;background:#f3f1ff;}
+</style>
+</head>
+<body>
+
+<div id="lockScreen" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;">
+  <div style="width:340px;max-width:100%;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 34px rgba(16,24,40,.08);padding:32px 28px;text-align:center;">
+    <div class="brand" style="justify-content:center;margin:0 0 6px;"><span class="logo">✓</span><span>캠페인 등록 도구</span></div>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 20px;">식별키를 입력해주세요.</p>
+    <input type="password" id="lockKey" placeholder="식별키 입력" style="margin-bottom:10px;">
+    <button class="btn btn-primary" id="lockBtn" style="width:100%;">입장하기</button>
+    <div id="lockErr" style="color:#c0392b;font-size:12.5px;margin-top:12px;min-height:16px;"></div>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="brand"><span class="logo">✓</span><span>캠페인 등록 도구</span></div>
+
+    <div class="profile">
+      <div class="avatar" id="userAvatar">U</div>
+      <div style="min-width:0;">
+        <div class="pname" id="userNameLabel">-</div>
+        <div class="pmeta" id="userRoleLabel"></div>
+      </div>
+      <button class="logout" id="btnLogout" title="로그아웃" aria-label="로그아웃"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#59607a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
+    </div>
+
+    <div class="nav-caption">캠페인 등록</div>
+    <div class="sidenav-item active" id="modeIndividual"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>개별 등록</span></div>
+    <div class="sidenav-item" id="modeBulk"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg><span>일괄 등록<small>(엑셀형태)</small></span></div>
+    <div class="sidenav-item" id="modeMulti"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg><span>다문제 등록<small>(NPN0/NPM0)</small></span></div>
+
+    <div class="nav-caption">정산</div>
+    <div class="sidenav-item" id="modeBalance"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg><span>잔액 관리</span></div>
+
+    <div class="nav-caption" id="navAdminCaption" style="display:none;">관리</div>
+    <div class="sidenav-item" id="modePermissions" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>권한 관리</span></div>
+  </aside>
+
+  <div class="app-main">
+    <div class="topbar">
+      <div class="crumb">Home<span class="sep">/</span><b id="breadcrumbCurrent">개별 등록</b><button class="helpbtn" id="btnBulkHelp" title="일괄 등록 방법 보기" aria-label="일괄 등록 방법 보기" style="display:none;">?</button></div>
+      <div class="topbar-right">
+        <span class="welcome" id="welcomeMsg"></span>
+        <button class="btn btn-outline" id="btnRefreshAll">🔄 새로고침</button>
+      </div>
+    </div>
+
+    <div id="mainContent" style="min-width:0;">
+
+  <div class="card draft-banner" id="draftBanner" style="display:none;">
+    <div><b>임시 저장된 작업이 있어요</b><span class="sub" id="draftBannerSub"></span></div>
+    <div class="db-actions">
+      <button class="btn btn-outline" id="btnDraftDiscard">버리기</button>
+      <button class="btn btn-primary" id="btnDraftRestore">불러오기</button>
+    </div>
+  </div>
+
+  <div id="registrationCommonCards">
+  <div class="card">
+    <h2 style="border:none;margin:0;padding:0;">캠페인 타입</h2>
+    <div style="display:flex;gap:16px;align-items:flex-start;margin-top:12px;flex-wrap:wrap;">
+      <div class="field" style="width:320px;flex:0 0 320px;margin-bottom:0;">
+        <select id="typeSelect"></select>
+      </div>
+      <div id="typeInfoBox" class="hint" style="flex:1;min-width:220px;align-self:center;">-</div>
+    </div>
+    <div id="templatePreviewWrap" style="margin-top:14px;display:none;">
+      <div class="preview-label">선택된 타입의 원본 템플릿</div>
+      <div class="preview" id="rawTemplatePreview">-</div>
+    </div>
+  </div>
+
+  <div class="card" id="customTypeManagerCard" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="border:none;margin:0;padding:0;">내 커스텀 타입 관리</h2>
+      <button class="btn btn-outline" id="btnToggleCustomTypeForm">+ 새 타입 만들기</button>
+    </div>
+    <div class="hint" style="margin-top:8px;">
+      기본은 <b>나에게만</b> 보이고, "모두에게 공개"를 체크하면 다른 로그인 사용자도 쓸 수 있습니다. 템플릿의 (1)(2)(3) 빈칸을 직접 채우는 방식입니다.<div id="customTypeServerVersion" style="margin-top:4px;"></div>
+    </div>
+
+    <div id="customTypeForm" style="display:none;margin-top:14px;">
+      <div class="row2">
+        <div class="field req"><label>타입코드 <span class="badge req">필수</span></label>
+          <input type="text" id="ct_code" placeholder="예: MYTYPE1"></div>
+        <div class="field"><label>타입명 <span class="badge opt">선택</span></label>
+          <input type="text" id="ct_name" placeholder="예: 나만의 유형"></div>
+      </div>
+      <div class="field req"><label>템플릿 내용 <span class="badge req">필수</span></label>
+        <textarea id="ct_template" rows="6" style="font-family:inherit;" placeholder="1. 검색어 복사하기 후 검색하러가기 클릭&#10;2.(1)&#10;3. '주변' > '명소' 순으로 탭 클릭"></textarea>
+        <div class="hint">빈칸은 (1), (2), (3)... 순서대로 넣어주세요. 등록할 때 그 자리에 입력한 내용으로 치환됩니다.</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:14px;cursor:pointer;">
+        <input type="checkbox" id="ct_isPublic">
+        모두에게 공개 (체크하면 다른 로그인 사용자도 이 타입을 등록에 쓸 수 있습니다)
+      </label>
+      <div class="actions">
+        <button class="btn btn-primary" id="btnSaveCustomType">💾 저장</button>
+        <button class="btn btn-outline" id="btnCancelCustomType">취소</button>
+      </div>
+      <div id="customTypeSaveResult"></div>
+    </div>
+
+    <div class="preview-label" style="margin-top:14px;">내가 만든 타입 목록</div>
+    <div id="customTypeList" class="hint">아직 만든 타입이 없습니다.</div>
+  </div>
+
+  <div class="card">
+    <h2 style="border:none;margin:0;padding:0;">광고주ID</h2>
+    <div style="display:flex;gap:16px;align-items:flex-start;margin-top:12px;flex-wrap:wrap;">
+      <div class="field" style="width:320px;flex:0 0 320px;margin-bottom:0;">
+        <input type="text" id="globalAdvertiserId" placeholder="예: jamonglab (선택)">
+      </div>
+      <div class="hint" style="flex:1;min-width:220px;align-self:center;">
+        여기에 입력하면 개별/일괄/다문제 등록 전체에 공통으로 적용됩니다. 엑셀 양식의 "광고주ID" 칸에 그대로 들어갑니다.
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="registrationLayout" class="layout">
+    <div>
+      <!-- 개별 등록 -->
+      <div id="individualMode">
+        <div class="card">
+          <h2>공통 정보</h2>
+          <div class="row3">
+            <div class="field req"><label>시작일 <span class="badge req">필수</span></label>
+              <input type="text" id="f_startAt" placeholder="2026-07-06"></div>
+            <div class="field req"><label>종료일 <span class="badge req">필수</span></label>
+              <input type="text" id="f_endAt" placeholder="2026-07-13"></div>
+            <div class="field req"><label>전체 참여 한도 <span class="badge req">필수</span></label>
+              <input type="number" id="f_totalQuota" placeholder="350"></div>
+          </div>
+          <div class="row2">
+            <div class="field req"><label>일 참여 한도 <span class="badge req">필수</span></label>
+              <input type="number" id="f_dailyQuota" placeholder="50"></div>
+            <div class="field"><label>랜딩 URL <span class="badge opt">선택</span></label>
+              <input type="text" id="f_hintUrl" list="hintUrlOptions" placeholder="직접 입력 또는 목록에서 선택"></div>
+
+            <datalist id="hintUrlOptions">
+              <option value="https://cdn.quizclick.io/quiz/public/support/v1/bridgenapp.html">네이버 앱</option>
+              <option value="https://cdn.quizclick.io/quiz/public/support/v1/bridgemap.html">네이버지도 앱</option>
+              <option value="https://link.naver.com/bridge?url=https%3A%2F%2Fm.naver.com%2F&dst=naversearchapp%3A%2F%2Finappbrowser%3Furl%3Dhttps%253A%252F%252Fm%252Enaver%252Ecom%252F%26version%3D10%26sourceReferer%3Dshare">네이버 링크</option>
+            </datalist>
+          </div>
+        </div>
+
+        <div class="card" id="legacyFieldsCard" style="display:none;">
+          <h2>가이드 문구</h2>
+          <div class="hint" style="margin-bottom:8px;">
+            이 부분만 자유롭게 수정할 수 있습니다. &lt;문제&gt;/&lt;힌트&gt; 부분은 마스킹·정답 자동계산이 그대로 적용되어 아래에 자동으로 붙습니다.
+          </div>
+          <div class="field" style="max-width:320px;">
+            <label>저장된 가이드 선택</label>
+            <select id="guideNameSelect"></select>
+          </div>
+          <textarea id="guideTextArea" rows="6" style="font-family:inherit;"></textarea>
+          <div class="row2" style="margin-top:8px;">
+            <div class="field"><label>저장할 이름</label><input type="text" id="guideSaveName" placeholder="예: 여름이벤트용"></div>
+            <div class="field" style="display:flex;align-items:flex-end;gap:8px;">
+              <button class="btn btn-outline" id="btnSaveGuide" style="flex:1;">💾 이 이름으로 저장</button>
+              <button class="btn btn-outline" id="btnDeleteGuide" style="flex:0 0 90px;">삭제</button>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-outline" id="btnResetGuide">기본값으로 되돌리기</button>
+          </div>
+          <div id="guideSaveResult"></div>
+
+          <div class="preview-label" style="margin-top:14px;">🔒 이 아래는 자동 계산되어 붙습니다 (수정 불가)</div>
+          <div class="preview" id="fixedPartPreview" style="background:#f0f1f4;border-style:solid;">-</div>
+
+          <h2 style="margin-top:18px;">타입별 원본 데이터</h2>
+          <div id="legacyFields"></div>
+        </div>
+
+        <div class="card" id="customFieldsCard" style="display:none;">
+          <h2>공통 정보 (템플릿 타입)</h2>
+          <div class="field req"><label>오픈 URL (플레이스/상품) <span class="badge req">필수</span></label>
+            <input type="text" id="f_openUrl" placeholder="https://..."></div>
+          <div class="field"><label>키워드 (,구분) <span class="badge opt">선택</span></label>
+            <input type="text" id="f_keyword" placeholder="키워드1,키워드2"></div>
+          <div class="field req">
+            <label>정답 <span class="badge req">필수</span></label>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+              <select id="ans_mode" style="width:auto;">
+                <option value="manual">직접 입력</option>
+                <option value="blank">빈칸 값 사용</option>
+              </select>
+              <select id="ans_blankIndex" style="width:auto;display:none;"></select>
+              <select id="ans_extract" style="width:auto;display:none;">
+                <option value="full">전체</option>
+                <option value="prefix">앞 N자리</option>
+                <option value="suffix">뒤 N자리</option>
+              </select>
+              <input type="number" id="ans_n" min="1" value="4" style="width:60px;display:none;">
+            </div>
+            <input type="text" id="f_answer" placeholder="정답 직접 입력">
+          </div>
+
+          <h2>빈칸 채우기</h2>
+          <div id="blankFields"><div class="hint">이 타입은 빈칸이 없습니다.</div></div>
+        </div>
+
+        <div class="card">
+          <div class="actions">
+            <button class="btn btn-primary" id="btnAdd">+ 캠페인 목록에 추가</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="bulkMode" style="display:none;">
+        <div class="card" id="bulkGuideCard" style="display:none;">
+          <h2>가이드 문구</h2>
+          <div class="hint" style="margin-bottom:8px;">
+            지금 선택된 타입으로 일괄 생성하면 <b>이 가이드 문구가 모든 행에 공통으로 적용</b>됩니다.
+            수정 후 저장하면 개별 등록 화면에도 동일하게 반영됩니다.
+          </div>
+          <div class="field" style="max-width:320px;">
+            <label>저장된 가이드 선택</label>
+            <select id="bulkGuideNameSelect"></select>
+          </div>
+          <textarea id="bulkGuideTextArea" rows="6" style="font-family:inherit;"></textarea>
+          <div class="row2" style="margin-top:8px;">
+            <div class="field"><label>저장할 이름</label><input type="text" id="bulkGuideSaveName" placeholder="예: 여름이벤트용"></div>
+            <div class="field" style="display:flex;align-items:flex-end;gap:8px;">
+              <button class="btn btn-outline" id="btnSaveGuideBulk" style="flex:1;">💾 이 이름으로 저장</button>
+              <button class="btn btn-outline" id="btnDeleteGuideBulk" style="flex:0 0 90px;">삭제</button>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-outline" id="btnResetGuideBulk">기본값으로 되돌리기</button>
+          </div>
+          <div id="bulkGuideSaveResult"></div>
+        </div>
+
+        <div class="card">
+          <h2>엑셀처럼 입력하기</h2>
+          <div class="hint" style="margin-bottom:10px;">
+            셀을 클릭해서 직접 입력하거나, 진짜 엑셀에서 범위를 복사한 뒤 첫 칸을 클릭하고 붙여넣기(Ctrl+V)하면
+            여러 행이 한 번에 채워집니다. 셀을 클릭하면 오른쪽 아래 작은 사각형(채우기 핸들)을 드래그해서 값을 채울 수도 있습니다.
+          </div>
+          <div class="gridwrap"><table class="grid" id="gridTable"></table></div>
+          <div class="gridcheck" id="gridCheck" style="display:none;">
+            <div class="gc-top">
+              <div class="gc-chips" id="gcChips"></div>
+              <button class="btn btn-outline" id="btnGcFix" style="display:none;">날짜 형식 자동 수정</button>
+            </div>
+            <div class="gc-list" id="gcList"></div>
+            <div class="gc-preview" id="gcPreview"></div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-outline" id="btnUndo" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
+            <button class="btn btn-outline" id="btnRedo" title="다시 실행 (Ctrl+Shift+Z)">↷ 다시 실행</button>
+            <button class="btn btn-outline" id="btnAddRows">+ 행 10개 추가</button>
+            <button class="btn btn-outline" id="btnClearGrid">그리드 초기화</button>
+            <button class="btn btn-primary" id="btnDownloadLegacyXlsx">📄 일괄등록 양식으로 다운로드 (문제/정답 포함)</button>
+            <button class="btn btn-outline" id="btnDownloadXlsx">원본데이터 백업 다운로드</button>
+            <label class="btn btn-outline" style="margin:0;">
+              엑셀 업로드(원본데이터)<input type="file" id="fileUploadXlsx" accept=".xlsx,.xls,.csv" style="display:none;">
+            </label>
+            <button class="btn btn-primary" id="btnGridSubmit">이 데이터로 캠페인 일괄 생성 →</button>
+          <span class="draft-status" id="draftStatusBulk"></span>
+          </div>
+          <div id="gridResult"></div>
+        </div>
+      </div>
+
+      <!-- 다문제 등록 (NPN0/NPM0 전용) -->
+      <div id="multiMode" style="display:none;">
+        <div id="multiNotSupported" class="card" style="display:none;">
+          <h2>다문제 등록</h2>
+          <div class="hint">이 기능은 <b>NPN0(명소), NPM0(길찾기거리)</b> 타입에서만 사용할 수 있습니다. 위에서 타입을 바꿔주세요.</div>
+        </div>
+
+        <div id="multiGuideCard" class="card" style="display:none;">
+          <h2>가이드 문구</h2>
+          <div class="hint" style="margin-bottom:8px;">모든 문제(문제#1, #2, #3...)에 공통으로 이 가이드가 적용됩니다.</div>
+          <div class="field" style="max-width:320px;">
+            <label>저장된 가이드 선택</label>
+            <select id="multiGuideNameSelect"></select>
+          </div>
+          <textarea id="multiGuideTextArea" rows="6" style="font-family:inherit;" readonly></textarea>
+          <div class="hint">가이드 수정/저장은 "개별 등록" 또는 "일괄 등록" 탭에서 해주세요. 여기서는 선택만 가능합니다.</div>
+        </div>
+
+        <div id="multiStartTypeCard" class="card" style="display:none;">
+          <h2>기준지점 (전체 문제 공통)</h2>
+          <div style="display:flex;gap:16px;align-items:center;margin-top:12px;flex-wrap:wrap;">
+            <div class="field" style="width:320px;flex:0 0 320px;margin-bottom:0;">
+              <select id="multiStartTypeSelect">
+                <option value="명소">명소</option>
+                <option value="출발지">출발지</option>
+              </select>
+            </div>
+            <div class="hint" style="flex:1;min-width:220px;">
+              여기서 한 번만 선택하면, 아래 모든 문제 칸이 같은 기준(명소 또는 출발지)으로 통일됩니다. 바꾸면 그리드가 초기화됩니다.
+            </div>
+          </div>
+        </div>
+
+        <div id="multiGridCard" class="card" style="display:none;">
+          <h2>다문제 일괄 입력</h2>
+          <div class="hint" style="margin-bottom:10px;">
+            한 행(캠페인) 안에 여러 개의 문제를 만들 수 있습니다. 문제별 칸이 비어있으면 그 문제는 건너뜁니다.
+            셀 클릭 후 엑셀에서 복사한 내용을 붙여넣기(Ctrl+V) 하면 여러 행이 한 번에 채워집니다.
+          </div>
+          <div class="actions" style="margin-bottom:10px;">
+            <button class="btn btn-outline" id="btnMultiAddQuestion">+ 문제 칸 추가</button>
+            <button class="btn btn-outline" id="btnMultiRemoveQuestion">- 문제 칸 제거</button>
+            <span class="hint" id="multiQuestionCountLabel" style="align-self:center;"></span>
+          </div>
+          <div class="gridwrap"><table class="grid" id="multiGridTable"></table></div>
+          <div class="actions">
+            <button class="btn btn-outline" id="btnMultiUndo" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
+            <button class="btn btn-outline" id="btnMultiRedo" title="다시 실행 (Ctrl+Shift+Z)">↷ 다시 실행</button>
+            <button class="btn btn-outline" id="btnMultiAddRows">+ 행 10개 추가</button>
+            <button class="btn btn-outline" id="btnMultiClearGrid">그리드 초기화</button>
+            <button class="btn btn-primary" id="btnMultiDownloadLegacyXlsx">📄 다문제 일괄등록 양식으로 다운로드</button>
+            <button class="btn btn-outline" id="btnMultiDownloadXlsx">원본데이터 백업 다운로드</button>
+            <label class="btn btn-outline" style="margin:0;">
+              엑셀 업로드(원본데이터)<input type="file" id="multiFileUploadXlsx" accept=".xlsx,.xls,.csv" style="display:none;">
+            </label>
+            <button class="btn btn-primary" id="btnMultiGridSubmit">이 데이터로 캠페인 일괄 생성 →</button>
+          <span class="draft-status" id="draftStatusMulti"></span>
+          </div>
+          <div id="multiGridResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="rightColumn">
+      <div class="card" id="previewCard">
+        <h2>실시간 미리보기</h2>
+        <div class="preview-label">캠페인명 (자동)</div>
+        <div class="preview" id="prevTitle">-</div>
+        <div class="hint" id="prevTitleNote" style="display:none;color:#b45309;"></div>
+        <div class="preview-label">문제 (자동 생성/치환)</div>
+        <div class="preview" id="prevQuestion">-</div>
+        <div class="preview-label">정답</div>
+        <div class="preview" id="prevAnswer">-</div>
+      </div>
+
+      <div class="card" style="display:none;">
+        <h2>등록 대기 목록 (<span id="listCount">0</span>건)</h2>
+        <div id="campaignList"><div class="empty">아직 추가된 캠페인이 없습니다.</div></div>
+        <div class="actions">
+          <button class="btn btn-outline" id="btnGenJson">전체 JSON 생성</button>
+        </div>
+        <textarea id="jsonOut" style="display:none;margin-top:10px;" readonly></textarea>
+        <div class="actions" id="jsonActions" style="display:none;">
+          <button class="btn btn-outline" id="btnCopy">JSON 복사</button>
+          <button class="btn btn-outline" id="btnDownload">JSON 파일 다운로드</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- 잔액 관리 -->
+<div id="balanceMode" style="display:none;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <h2 style="border:none;margin:0;padding:0;font-size:20px;" id="balanceTitle">잔액 관리</h2>
+        <div class="hint" style="margin-top:4px;" id="balanceSubtitle">불러오는 중...</div>
+      </div>
+      <button class="btn btn-outline" id="btnRefreshBalance">🔄 새로고침</button>
+    </div>
+  </div>
+
+  <div id="balanceLoading" class="card" style="text-align:center;color:var(--muted);padding:40px 20px;">
+    ⏳ 잔액 데이터를 불러오는 중입니다...
+  </div>
+
+  <div id="balanceCardGrid" style="display:none;"></div>
+
+  <div id="balanceWarnings" class="card" style="display:none;margin-top:16px;"></div>
+
+  <div id="balanceResult"></div>
+</div>
+
+<!-- 권한 관리 (관리자 전용) -->
+<div id="permissionsMode" style="display:none;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+      <div>
+        <h2 style="margin:0;font-size:20px;">사용자 권한 관리</h2>
+        <div class="hint" style="margin-top:4px;" id="permSubtitle">불러오는 중...</div>
+      </div>
+      <button class="btn btn-outline" id="btnReloadPerms">🔄 새로고침</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hint" style="margin:0 0 12px;">체크한 사용자만 해당 화면을 쓸 수 있습니다. 관리자는 항상 모두 사용할 수 있고, <b>일괄 등록</b>과 <b>잔액 관리</b>는 권한과 상관없이 모든 로그인 사용자가 쓸 수 있습니다.</div>
+    <div class="gridwrap"><table class="permtable" id="permTable"></table></div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btnSavePerms">💾 권한 저장</button>
+    </div>
+    <div id="permResult"></div>
+  </div>
+</div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 일괄 등록 방법 안내 창 -->
+<div id="helpModal" class="modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+  <div class="modal">
+    <div class="modal-head"><span id="helpModalTitle">📘 일괄 등록 방법</span><button class="modal-close" id="btnHelpClose" aria-label="닫기">✕</button></div>
+    <div class="modal-body"><div class="howto">
+<ol class="howto-steps">
+                <li><span class="n">1</span><div><b>캠페인 타입 선택</b>
+                  <p>화면 위쪽 <span class="tag">캠페인 타입</span>에서 등록할 타입을 고릅니다. 타입에 따라 아래 표의 입력 칸이 달라집니다.</p></div></li>
+                <li><span class="n">2</span><div><b>광고주ID 입력 (선택)</b>
+                  <p><span class="tag">광고주ID</span>를 입력하면 엑셀 양식의 광고주ID 칸과 파일명에 그대로 들어갑니다. 입력하지 않으면 파일명에 <b>광고사미정</b>으로 표시됩니다.</p></div></li>
+                <li><span class="n">3</span><div><b>가이드 문구 확인</b>
+                  <p>아래 <span class="tag">가이드 문구</span>가 모든 행에 똑같이 적용됩니다. 문구를 고쳤다면 이름을 붙여 저장해두고 다음에 골라서 쓸 수 있습니다.</p></div></li>
+                <li><span class="n">4</span><div><b>표에 입력하기</b>
+                  <p><span class="tag">엑셀처럼 입력하기</span> 표에 직접 입력하거나, 엑셀에서 범위를 복사해 표의 첫 칸을 클릭한 뒤 <kbd>Ctrl</kbd>+<kbd>V</kbd>로 붙여넣으면 여러 행이 한 번에 채워집니다.<br>
+                  셀 오른쪽 아래 작은 사각형을 아래로 끌면 같은 값이 채워지고, <span class="tag">+ 행 10개 추가</span>로 행을 늘릴 수 있습니다.<br>
+                  빨간 <b>필수</b> 표시가 있는 칸은 꼭 채워주세요. 날짜는 <b>2026-07-06</b> 형식으로 입력합니다.</p></div></li>
+                <li><span class="n">5</span><div><b>양식 다운로드</b>
+                  <p>표 아래 <span class="tag">📄 일괄등록 양식으로 다운로드 (문제/정답 포함)</span>를 누르면 <b>날짜_타입_광고사_일괄등록양식.xlsx</b> 파일이 내려받아집니다.</p></div></li>
+                <li><span class="n">6</span><div><b>파일 전달</b>
+                  <p>내려받은 파일을 담당자에게 전달해 주세요.</p></div></li>
+              </ol>
+              <div class="howto-tips">
+                <b>💡 이어서 작업하고 싶을 때</b> — <span class="tag">원본데이터 백업 다운로드</span>로 입력 내용을 저장해두고, 다음에 <span class="tag">엑셀 업로드(원본데이터)</span>로 불러오면 이어서 작업할 수 있습니다.<br>
+                <b>💡 처음부터 다시 하고 싶을 때</b> — <span class="tag">그리드 초기화</span>를 누르면 표가 비워집니다.
+              </div>
+    </div></div>
+    <div class="modal-foot"><button class="btn btn-primary" id="btnHelpOk">확인했어요</button></div>
+  </div>
+</div>
+
+<!-- 로그인 잔액 알림 -->
+<div id="balanceAlertModal" class="modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="baTitle">
+  <div class="modal" style="width:440px;">
+    <div class="modal-body" id="baBody" style="padding:22px 24px 8px;"></div>
+    <div class="modal-foot" style="border-top:none;padding-top:10px;">
+      <button class="btn btn-outline" id="btnBaClose" style="margin-right:8px;">닫기</button>
+      <button class="btn btn-primary" id="btnBaGo">잔액 보기</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const TEMPLATE_API_URL = "https://script.google.com/macros/s/AKfycbzKhAlGVY9EOEVHzd7qHpoLuuMZ2-LzjnNWXhoPWdN8LqmBdNkOlXQUWplAMP2yoSyq/exec";
+// 잔액관리는 완전히 별개의 Apps Script 배포(잔액관리 스프레드시트에 붙인 것)를 씁니다.
+const BALANCE_API_URL = "https://script.google.com/macros/s/AKfycbw4Q9R8COqWuVN0eTDja4kPkoAOb4azrl1P_4-4VSdtCviVRDN0e2vQUf9FgeXg0jdd/exec";
+
+function maskText(s){
+  if(s===undefined||s===null) return s;
+  s = String(s);
+  if(s.length===0) return s;
+  if(s.length<=2) return s.slice(0,-1)+"X";
+  return s.split('').map((ch,i)=> ((i+1)%3===0) ? 'X' : ch).join('');
+}
+function halfMask(s){
+  if(!s) return s;
+  s = String(s);
+  const maskLen = Math.floor(s.length/2);
+  const keepLen = s.length - maskLen;
+  return s.slice(0, keepLen) + 'x'.repeat(maskLen);
+}
+function distanceRange(raw){
+  const n = Number(String(raw).replace(/,/g,''));
+  if(isNaN(n)) return String(raw);
+  if(Number.isInteger(n)){
+    const lo = Math.max(n-30, 1), hi = n+30;
+    return `${lo}~${hi}`;
+  }
+  const lo = Math.max(n-3, 1), hi = n+3;
+  return `${lo.toFixed(1)}~${hi.toFixed(1)}`;
+}
+function parseNum(s){
+  if(s===undefined||s===null||s==='') return NaN;
+  return Number(String(s).replace(/,/g,'').trim());
+}
+function firstKeyword(k){ if(!k) return ""; return String(k).split(',')[0].trim(); }
+function autoTitle(k){ const kw=firstKeyword(k); return kw? ("[정답입력]"+kw) : "[정답입력]"; }
+
+// 캠페인명 만들기 (항상 "[정답입력]" 뒤에 이름이 붙습니다. "[정답입력]"만 남지 않게 합니다)
+//  1) 첫 번째 키워드  2) 키워드가 없으면 타입별 대체 이름 (플레이스 타입=플레이스명, NSN4(쇼핑)=스토어명→상품명,
+//  커스텀 타입=타입명_광고주ID_행번호)  3) 그것도 없으면 광고주ID_타입_행번호
+function makeTitle(typeCode, row, rowNo){
+  const kw = firstKeyword(row.keyword);
+  if(kw) return {title:'[정답입력]'+kw, fallback:false, source:'키워드'};
+  const g = id => String(row[id]===undefined||row[id]===null ? '' : row[id]).trim();
+  const adv = g('advertiserId') || '광고사미정';
+  const no = rowNo || 1;
+  if(isLegacyType(typeCode)){
+    if(typeCode==='NSN4'){
+      if(g('store_name')) return {title:'[정답입력]'+g('store_name'), fallback:true, source:'스토어명'};
+      if(g('product_name')) return {title:'[정답입력]'+g('product_name'), fallback:true, source:'상품명'};
+    } else if(g('place_name')){
+      return {title:'[정답입력]'+g('place_name'), fallback:true, source:'플레이스명'};
+    }
+  } else {
+    const tmpl = getCustomTemplate(typeCode);
+    return {title:`[정답입력]${tmpl?tmpl.name:typeCode}_${adv}_${no}`, fallback:true, source:'타입명·광고주ID·행번호'};
+  }
+  return {title:`[정답입력]${adv}_${typeCode}_${no}`, fallback:true, source:'광고주ID·타입·행번호'};
+}
+function splitKeywords(k){ if(!k) return []; return String(k).split(',').map(s=>s.trim()).filter(Boolean); }
+function autoCode(typeCode, idx){ return `${typeCode}_${Date.now()}_${idx}`; }
+function fmtWon(n){ const v=Number(n||0); return (v<0?'-':'') + '₩' + Math.abs(v).toLocaleString(); }
+
+const LEGACY_TYPES = {
+  NPD0: {
+    label: "NPD0 · 길찾기",
+    openUrlField: "place_url",
+    defaultGuide:
+`1. 키워드 복사 후 검색하러가기 클릭
+2. 복사한 키워드 검색 후 '플레이스명' 클릭
+3. [길찾기] 또는 [내비게이션] 클릭하여 '네이버 지도앱'으로 이동하기
+4. [차량탭] > [안내시작] 순서대로 클릭 후 화면 캡쳐하기`,
+    fields: [
+      {id:"keyword", label:"키워드(,구분)", req:false, ph:"대정읍 당근케익,모슬포 디저트 카페"},
+      {id:"place_url", label:"플레이스URL", req:true, ph:"https://m.place.naver.com/restaurant/xxxx"},
+      {id:"rank", label:"플레이스순위", req:false, ph:"1"},
+      {id:"place_name", label:"플레이스명", req:true, ph:"재클린디저트 모슬포점"}
+    ],
+    build(v, guideText){
+      const place = (v.place_name||"").trim();
+      const question =
+`${guideText}
+
+<문제>
+캡쳐화면 업로드하기
+플레이스명이 나오게 캡쳐해주세요!
+
+<힌트>
+플레이스명: ${maskText(place)}
+
+*네이버 지도앱 설치 필수*`;
+      return {question, answer: place, title: autoTitle(v.keyword)};
+    }
+  },
+  NPN0: {
+    label: "NPN0 · 명소",
+    openUrlField: "place_url",
+    defaultGuide:
+`1. 키워드 복사 후 검색하러 가기 클릭
+2. 복사한 키워드 검색 후 '플레이스명' 클릭 
+3.'주변' > '명소' 순으로 클릭 후 'N'번째 명소 찾기
+4. 플레이스 영역 미노출되는 경우, 블로그 클릭 후 플레이스로 이동`,
+    fields: [
+      {id:"keyword", label:"키워드(,구분)", req:false, ph:"대정읍 당근케익,모슬포 디저트 카페"},
+      {id:"place_url", label:"플레이스URL", req:true, ph:"https://m.place.naver.com/restaurant/xxxx"},
+      {id:"rank", label:"플레이스순위", req:false, ph:"1"},
+      {id:"place_name", label:"플레이스명", req:true, ph:"재클린디저트 모슬포점"},
+      {id:"spot1", label:"명소1", req:true, ph:"남당항 해양분수공원"},
+      {id:"spot2", label:"명소2", req:false, ph:""},
+      {id:"spot3", label:"명소3", req:false, ph:""},
+      {id:"spot4", label:"명소4", req:false, ph:""},
+      {id:"spot5", label:"명소5", req:false, ph:""}
+    ],
+    build(v, guideText){
+      const place=(v.place_name||"").trim();
+      const spots=[1,2,3,4,5].map(i=>({idx:i, name:(v["spot"+i]||"").trim()})).filter(s=>s.name);
+      if(spots.length===0) throw new Error("명소1~5 중 최소 1개는 입력해야 합니다.");
+      let target=spots[0];
+      for(const s of spots){ if(s.name.length < target.name.length) target=s; }
+      const question =
+`${guideText}
+
+<문제>  
+${target.idx} 번째 명소
+
+<힌트>
+플레이스명: ${maskText(place)}`;
+      return {question, answer: target.name, title: autoTitle(v.keyword)};
+    }
+  },
+  NSN4: {
+    label: "NSN4 · 상품번호",
+    openUrlField: "shopping_url",
+    defaultGuide:
+`1. 키워드 복사 후 검색하러 가기 클릭
+2. 복사한 키워드 검색 후 '네이버 가격비교 더보기' 클릭
+3. 힌트와 일치하는 '상품명'과 '스토어' 선택
+4. 상세정보 하단 '구매 추가정보'에서 '상품번호' 확인`,
+    fields: [
+      {id:"keyword", label:"키워드(,구분)", req:false, ph:"통오리,통닭,통돼지"},
+      {id:"shopping_url", label:"쇼핑URL", req:true, ph:"https://smartstore.naver.com/main/products/xxxx"},
+      {id:"page", label:"페이지", req:false, ph:"1"},
+      {id:"rank", label:"순위", req:false, ph:"1"},
+      {id:"store_name", label:"스토어명", req:true, ph:"팜스제임"},
+      {id:"product_name", label:"상품명", req:true, ph:"[냉장] 팜스제임 23호 통오리..."},
+      {id:"price", label:"상품가격", req:true, ph:"13,700 원"},
+      {id:"product_no", label:"상품번호", req:true, ph:"10486805661"},
+      {id:"prefix_or_suffix", label:"정답자리", req:true, type:"select", options:["앞 네자리","뒤 네자리"]},
+      {id:"image_url", label:"이미지URL", req:false, ph:"https://.../image.jpg"}
+    ],
+    build(v, guideText){
+      const store=(v.store_name||"").trim();
+      const product=(v.product_name||"").trim();
+      const price=(v.price||"").trim();
+      const no=(v.product_no||"").trim();
+      const choice=(v.prefix_or_suffix||"앞 네자리").trim();
+      const answer = choice==="뒤 네자리" ? no.slice(-4) : no.slice(0,4);
+      const page=(v.page||"").trim(), rank=(v.rank||"").trim();
+      let rankLine="";
+      if(page||rank){
+        const parts=[page, rank? (rank+"위"):""].filter(Boolean);
+        rankLine="순위(광고제외) : "+parts.join(", ");
+      }
+      const question =
+`${guideText}
+
+<문제>
+상품번호: ${choice}
+
+<힌트>
+스토어명 : ${maskText(store)}
+상품명   : ${maskText(product)}
+상품금액 : ${price}` + (rankLine? "\n"+rankLine : "");
+      return {question, answer, title: autoTitle(v.keyword)};
+    }
+  },
+  NPM0: {
+    label: "NPM0 · 길찾기거리",
+    openUrlField: "place_url",
+    defaultGuide: {
+      "출발지":
+`1. 키워드 복사 후 검색하러가기 클릭
+2. 검색창에 키워드 지우고 복사한 키워드 붙여넣기
+3. 힌트와 일치하는 플레이스명 찾기
+4. '길찾기' 클릭
+5.'출발지'에  힌트에서 제시하는 장소 붙여넣고 '도보'에 나오는 '가장 빠른'거리 입력하기`,
+      "명소":
+`1. 키워드 복사 후 검색하러가기 클릭 
+2. 힌트에서 제시한  '플레이스명' 클릭 
+3. 플레이스명 복사 후  '주변' > '명소' 순으로 클릭
+4. 힌트에서 제시한 '명소' 클릭 후 '길찾기' 클릭
+5.'출발지'에  '플레이스명' 붙여넣고 '도보'에 나오는 '가장 빠른'거리 입력하기`
+    },
+    guideVariant(v){ return (v.startType||"명소").trim(); }, // NPM0는 기준지점(명소/출발지)에 따라 가이드가 2종류
+    fields: [
+      {id:"keyword", label:"키워드(,구분)", req:false, ph:"대정읍 당근케익,모슬포 디저트 카페"},
+      {id:"place_url", label:"플레이스URL", req:true, ph:"https://m.place.naver.com/restaurant/xxxx"},
+      {id:"rank", label:"플레이스순위", req:false, ph:"1"},
+      {id:"place_name", label:"플레이스명", req:true, ph:"재클린디저트 모슬포점"},
+      {id:"startType", label:"기준지점", req:true, type:"select", options:["명소","출발지"]},
+      {id:"order_n", label:"n번째(명소일 때만)", req:false, ph:"3"},
+      {id:"ref_name", label:"명소/출발지명", req:true, ph:"서리풀공원"},
+      {id:"distance_answer", label:"정답거리(m 또는 km)", req:true, ph:"350 또는 1.2"}
+    ],
+    build(v, guideText){
+      const place=(v.place_name||"").trim();
+      const refName=(v.ref_name||"").trim();
+      const startType=(v.startType||"명소").trim();
+      const answer = distanceRange(v.distance_answer);
+      const maskedPlace = maskText(place);
+      let question;
+      if(startType==="출발지"){
+        question =
+`${guideText}
+
+<문제>  
+''가장 빠른'' 거리 입력 (@@@m, @.@km)
+
+<힌트>
+플레이스명: ${maskedPlace}
+출발지: ${refName}`;
+      } else {
+        const n = (v.order_n||"").trim();
+        if(!n) throw new Error("'명소' 방식은 n번째 값을 입력해야 합니다.");
+        const maskedRef = halfMask(refName);
+        question =
+`${guideText}
+
+<문제>  
+''가장 빠른'' 거리 입력 (@@@m, @.@km)
+
+<힌트>
+플레이스명: ${maskedPlace}
+${n}번쨰 명소: ${maskedRef}`;
+      }
+      return {question, answer, title: autoTitle(v.keyword)};
+    }
+  }
+};
+const LEGACY_CODES = Object.keys(LEGACY_TYPES);
+
+// ==================== 가이드 문구 (1.2.3...) - 이름 붙여서 여러 개 저장/선택 ====================
+let GUIDES = {}; // { typeCode: [{name, guideText}, ...] }  (시트에서 불러온 커스텀 저장본들)
+let selectedGuideName = {}; // { typeCode: '지금 선택된 이름' }
+
+// 타입의 "기본값" 옵션들. NPM0는 기준지점별로 2개(기본값(명소)/기본값(출발지)), 나머지는 1개(기본값)
+function getDefaultGuideOptions(typeCode){
+  const type = LEGACY_TYPES[typeCode];
+  if(!type) return [];
+  if(type.guideVariant){
+    return Object.keys(type.defaultGuide).map(variant => ({ name: `기본값(${variant})`, guideText: type.defaultGuide[variant] }));
+  }
+  return [{ name:'기본값', guideText: type.defaultGuide }];
+}
+// 기본값 옵션 + 시트에 저장된 커스텀 이름들을 합친 전체 목록
+function getGuideOptions(typeCode){
+  return getDefaultGuideOptions(typeCode).concat(GUIDES[typeCode] || []);
+}
+function getGuideTextByName(typeCode, name){
+  const opt = getGuideOptions(typeCode).find(o=>o.name===name);
+  return opt ? opt.guideText : '';
+}
+function defaultSelectedName(typeCode){
+  const opts = getDefaultGuideOptions(typeCode);
+  return opts.length ? opts[0].name : '';
+}
+// 지금 선택된 이름의 가이드 텍스트 (없으면 그 타입의 첫 기본값)
+function currentGuideText(typeCode){
+  const name = selectedGuideName[typeCode] || defaultSelectedName(typeCode);
+  return getGuideTextByName(typeCode, name) || '';
+}
+
+function currentOwnerKey(){ return sessionStorage.getItem('crt_key') || ''; }
+
+async function loadGuides(){
+  try{
+    const owner = currentOwnerKey();
+    const res = await fetch(`${TEMPLATE_API_URL}?action=getGuides&owner=${encodeURIComponent(owner)}`);
+    const data = await res.json();
+    GUIDES = {};
+    if(data.success){
+      (data.guides||[]).forEach(g=>{
+        if(!GUIDES[g.code]) GUIDES[g.code] = [];
+        GUIDES[g.code].push({ name: g.name, guideText: g.guideText });
+      });
+    }
+  }catch(e){
+    console.error('가이드 로딩 실패', e);
+  }
+}
+
+async function saveGuideAs(typeCode, name, guideText){
+  const res = await fetch(TEMPLATE_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ type:'saveGuide', code:typeCode, name, guideText, owner: currentOwnerKey() })
+  });
+  const data = await res.json();
+  if(data.success){
+    GUIDES[typeCode] = (data.guides||[]).filter(g=>g.code===typeCode).map(g=>({name:g.name, guideText:g.guideText}));
+    selectedGuideName[typeCode] = name;
+  }
+  return data;
+}
+
+async function deleteGuideName(typeCode, name){
+  const res = await fetch(TEMPLATE_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ type:'deleteGuide', code:typeCode, name, owner: currentOwnerKey() })
+  });
+  const data = await res.json();
+  if(data.success){
+    GUIDES[typeCode] = (data.guides||[]).filter(g=>g.code===typeCode).map(g=>({name:g.name, guideText:g.guideText}));
+    if(selectedGuideName[typeCode]===name) selectedGuideName[typeCode] = defaultSelectedName(typeCode);
+  }
+  return data;
+}
+
+let CUSTOM_TEMPLATES = [];
+
+function countBlanks(template){
+  const matches = template.match(/\((\d+)\)/g) || [];
+  if(matches.length===0) return 0;
+  const nums = matches.map(m => parseInt(m.replace(/[()]/g,''), 10));
+  return Math.max(...nums);
+}
+function substituteTemplate(template, blanks){
+  let result = template;
+  blanks.forEach((val, idx)=>{
+    const token = `(${idx+1})`;
+    result = result.split(token).join(val==null? '' : val);
+  });
+  return result;
+}
+
+async function loadTemplates(){
+  try{
+    const owner = currentOwnerKey();
+    const res = await fetch(`${TEMPLATE_API_URL}?action=getTemplates&owner=${encodeURIComponent(owner)}`);
+    const data = await res.json();
+    CUSTOM_TEMPLATES = (data.success && data.templates) ? data.templates : [];
+    const verEl = document.getElementById('customTypeServerVersion');
+    if(verEl){ verEl.textContent = data.scriptVersion ? `서버 ${data.scriptVersion}` : '⚠ 등록용 서버가 구버전입니다 (등록용 Apps Script 새 버전으로 재배포 필요)'; }
+  }catch(e){
+    console.error('템플릿 로딩 실패', e);
+    CUSTOM_TEMPLATES = [];
+  }
+  renderTypeSelect();
+  renderCustomTypeList();
+}
+
+// ==================== 내 커스텀 타입 관리 ====================
+document.getElementById('btnToggleCustomTypeForm').addEventListener('click', ()=>{
+  const form = document.getElementById('customTypeForm');
+  const showing = form.style.display !== 'none';
+  form.style.display = showing ? 'none' : 'block';
+  document.getElementById('btnToggleCustomTypeForm').textContent = showing ? '+ 새 타입 만들기' : '접기';
+});
+document.getElementById('btnCancelCustomType').addEventListener('click', ()=>{
+  document.getElementById('customTypeForm').style.display = 'none';
+  document.getElementById('btnToggleCustomTypeForm').textContent = '+ 새 타입 만들기';
+  document.getElementById('ct_code').value = '';
+  document.getElementById('ct_name').value = '';
+  document.getElementById('ct_template').value = '';
+  document.getElementById('ct_isPublic').checked = false;
+  document.getElementById('customTypeSaveResult').innerHTML = '';
+});
+
+document.getElementById('btnSaveCustomType').addEventListener('click', async ()=>{
+  const code = document.getElementById('ct_code').value.trim();
+  const name = document.getElementById('ct_name').value.trim();
+  const template = document.getElementById('ct_template').value.trim();
+  const isPublic = document.getElementById('ct_isPublic').checked;
+  const resEl = document.getElementById('customTypeSaveResult');
+
+  if(!code || !template){ alert('타입코드와 템플릿 내용은 필수입니다.'); return; }
+  if(isLegacyType(code)){ alert('NPD0/NPN0/NPM0/NSN4는 이미 내장된 타입 코드라 사용할 수 없습니다. 다른 코드를 입력해주세요.'); return; }
+
+  resEl.innerHTML = '저장 중...';
+  try{
+    const res = await fetch(TEMPLATE_API_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ type:'saveTemplate', code, name, template, owner: currentOwnerKey(), isPublic })
+    });
+    const data = await res.json();
+    if(data.success){
+      CUSTOM_TEMPLATES = data.templates || [];
+      resEl.innerHTML = `<div class="apiresult ok">✅ "${code}" 타입이 저장되었습니다.</div>`;
+      renderTypeSelect();
+      renderCustomTypeList();
+    } else {
+      resEl.innerHTML = `<div class="apiresult err">❌ ${data.error||'저장 실패'}</div>`;
+    }
+  }catch(e){
+    resEl.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${e.message}</div>`;
+  }
+});
+
+async function deleteCustomType(code){
+  if(!confirm(`"${code}" 타입을 삭제할까요? 이 타입으로 등록 대기 목록에 이미 추가한 캠페인은 영향받지 않습니다.`)) return;
+  try{
+    const res = await fetch(TEMPLATE_API_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ type:'deleteTemplate', code, owner: currentOwnerKey() })
+    });
+    const data = await res.json();
+    if(data.success){
+      CUSTOM_TEMPLATES = data.templates || [];
+      renderTypeSelect();
+      renderCustomTypeList();
+    } else {
+      alert(data.error || '삭제 실패');
+    }
+  }catch(e){
+    alert('호출 실패: ' + e.message);
+  }
+}
+
+function renderCustomTypeList(){
+  const wrap = document.getElementById('customTypeList');
+  if(CUSTOM_TEMPLATES.length===0){ wrap.innerHTML = '아직 만든 타입이 없습니다.'; wrap.className='hint'; return; }
+  wrap.className = '';
+  wrap.innerHTML = '';
+  CUSTOM_TEMPLATES.forEach(t=>{
+    const div = document.createElement('div'); div.className = 'list-item';
+    const badges = (t.isPublic ? ' <span class="badge kind">공개</span>' : '') + (t.mine===false ? ' <span class="badge opt">공유받음</span>' : '');
+    div.innerHTML = `<div><span class="type-pill">${t.code}</span><b>${t.name}</b>${badges}</div>`;
+    if(t.mine !== false){
+      const btn = document.createElement('button'); btn.className='btn-danger'; btn.textContent='삭제';
+      btn.onclick = ()=> deleteCustomType(t.code);
+      div.appendChild(btn);
+    } else {
+      const span = document.createElement('span'); span.className='hint'; span.textContent='관리자 공유';
+      div.appendChild(span);
+    }
+    wrap.appendChild(div);
+  });
+}
+
+function isLegacyType(code){ return LEGACY_CODES.indexOf(code) !== -1; }
+function getCustomTemplate(code){ return CUSTOM_TEMPLATES.find(t=>t.code===code) || null; }
+
+function renderTypeSelect(){
+  const sel = document.getElementById('typeSelect');
+  const legacyOpts = LEGACY_CODES.map(code => `<option value="${code}">${LEGACY_TYPES[code].label} (자동)</option>`);
+  const customOpts = CUSTOM_TEMPLATES.map(t => `<option value="${t.code}">${t.name} (${t.code}) · 템플릿</option>`);
+  sel.innerHTML = legacyOpts.concat(customOpts).join('');
+  onTypeChange();
+}
+
+let campaigns = [];
+let gridByType = {};
+let currentMode = 'individual';
+
+function currentType(){ return document.getElementById('typeSelect').value; }
+
+function onTypeChange(){
+  const code = currentType();
+  const legacy = isLegacyType(code);
+  document.getElementById('legacyFieldsCard').style.display = legacy ? 'block' : 'none';
+  document.getElementById('customFieldsCard').style.display = legacy ? 'none' : 'block';
+  document.getElementById('templatePreviewWrap').style.display = legacy ? 'none' : 'block';
+
+  const infoBox = document.getElementById('typeInfoBox');
+  if(legacy){
+    const multiNote = MULTI_TYPES[code] ? ' · <b>다문제 등록</b> 탭에서 한 캠페인에 여러 문제도 만들 수 있습니다.' : '';
+    infoBox.innerHTML = `🔒 마스킹/정답이 자동 계산되는 레거시 타입입니다. 원본 데이터만 입력하면 문제·정답이 자동 완성됩니다.${multiNote}`;
+  } else {
+    infoBox.innerHTML = `📝 시트에 저장된 템플릿의 빈칸을 직접 채우는 타입입니다. 정답도 직접 입력합니다.`;
+  }
+
+  if(legacy){
+    renderLegacyFields(code);
+  } else {
+    const tmpl = getCustomTemplate(code);
+    document.getElementById('rawTemplatePreview').textContent = tmpl ? tmpl.template : '(템플릿을 찾을 수 없습니다)';
+    renderBlankFields(tmpl);
+  }
+  updatePreview();
+  if(currentMode==='bulk'){ renderGrid(); refreshBulkGuideCard(); }
+  if(currentMode==='multi'){ refreshMultiMode(); }
+}
+document.getElementById('typeSelect').addEventListener('change', onTypeChange);
+
+function renderLegacyFields(code){
+  const wrap = document.getElementById('legacyFields');
+  wrap.innerHTML = '';
+  const type = LEGACY_TYPES[code];
+  type.fields.forEach(f=>{
+    const div = document.createElement('div'); div.className = 'field' + (f.req? ' req':'');
+    const label = document.createElement('label');
+    label.innerHTML = f.label + ' <span class="badge ' + (f.req?'req">필수':'opt">선택') + '</span>';
+    div.appendChild(label);
+    let input;
+    if(f.type==='select'){
+      input = document.createElement('select');
+      f.options.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; input.appendChild(op); });
+    } else {
+      input = document.createElement('input'); input.type='text'; input.placeholder = f.ph||'';
+    }
+    input.id = 'lf_' + f.id;
+    input.addEventListener('input', updatePreview);
+    input.addEventListener('change', updatePreview);
+    div.appendChild(input);
+    wrap.appendChild(div);
+  });
+  refreshGuideTextArea(code);
+}
+function getLegacyValues(code){
+  const type = LEGACY_TYPES[code];
+  const v = {};
+  type.fields.forEach(f=>{ const el=document.getElementById('lf_'+f.id); v[f.id] = el ? el.value : ''; });
+  return v;
+}
+
+// 이름 드롭박스 채우고, 현재 선택된 이름의 텍스트를 textarea에 표시
+function refreshGuideTextArea(code){
+  const sel = document.getElementById('guideNameSelect');
+  const options = getGuideOptions(code);
+  const selectedName = selectedGuideName[code] || defaultSelectedName(code);
+  sel.innerHTML = options.map(o=>`<option value="${o.name}"${o.name===selectedName?' selected':''}>${o.name}</option>`).join('');
+  document.getElementById('guideTextArea').value = getGuideTextByName(code, selectedName);
+  document.getElementById('guideSaveName').value = selectedName;
+  document.getElementById('guideSaveResult').innerHTML = '';
+}
+document.getElementById('guideTextArea').addEventListener('input', updatePreview);
+document.getElementById('guideNameSelect').addEventListener('change', ()=>{
+  const code = currentType();
+  const name = document.getElementById('guideNameSelect').value;
+  selectedGuideName[code] = name;
+  document.getElementById('guideTextArea').value = getGuideTextByName(code, name);
+  document.getElementById('guideSaveName').value = name;
+  updatePreview();
+});
+
+document.getElementById('btnSaveGuide').addEventListener('click', async ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  const name = document.getElementById('guideSaveName').value.trim();
+  if(!name){ alert('저장할 이름을 입력해주세요.'); return; }
+  const guideText = document.getElementById('guideTextArea').value;
+  const resEl = document.getElementById('guideSaveResult');
+  resEl.innerHTML = '저장 중...';
+  try{
+    const data = await saveGuideAs(code, name, guideText);
+    if(data.success){
+      resEl.innerHTML = `<div class="apiresult ok">✅ "${name}" 이름으로 저장되었습니다.</div>`;
+      refreshGuideTextArea(code);
+      if(currentMode==='bulk') refreshBulkGuideCard();
+    } else {
+      resEl.innerHTML = `<div class="apiresult err">❌ ${data.error||'저장 실패'}</div>`;
+    }
+  }catch(e){
+    resEl.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${e.message}</div>`;
+  }
+});
+
+document.getElementById('btnDeleteGuide').addEventListener('click', async ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  const name = document.getElementById('guideNameSelect').value;
+  if(name.startsWith('기본값')){ alert('기본값은 삭제할 수 없습니다.'); return; }
+  if(!confirm(`"${name}" 저장본을 삭제할까요?`)) return;
+  const resEl = document.getElementById('guideSaveResult');
+  const data = await deleteGuideName(code, name);
+  resEl.innerHTML = data.success
+    ? `<div class="apiresult ok">✅ 삭제되었습니다.</div>`
+    : `<div class="apiresult err">❌ ${data.error||'삭제 실패'}</div>`;
+  refreshGuideTextArea(code);
+  if(currentMode==='bulk') refreshBulkGuideCard();
+});
+
+document.getElementById('btnResetGuide').addEventListener('click', ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  document.getElementById('guideTextArea').value = getDefaultGuideOptions(code)[0].guideText;
+  updatePreview();
+});
+
+// ==================== 빈칸별 마스킹 방식 ====================
+// { typeCode: { 1: {mode:'none'|'default'|'suffix', n:4}, ... } }
+// mode 'default' = 기존 방식(3글자마다 X), 'suffix' = 뒤 n자리만 마스킹, 'none' = 마스킹 안함
+let blankMaskConfig = {};
+function getBlankMask(typeCode, i){
+  return (blankMaskConfig[typeCode] && blankMaskConfig[typeCode][i]) || { mode:'none', n:4 };
+}
+function setBlankMask(typeCode, i, patch){
+  if(!blankMaskConfig[typeCode]) blankMaskConfig[typeCode] = {};
+  const cur = getBlankMask(typeCode, i);
+  blankMaskConfig[typeCode][i] = Object.assign({}, cur, patch);
+  scheduleDraftSave();
+}
+// 뒤 n자리만 X로 마스킹 (예: "재클린디저트" + n=3 → "재클린디X X X")
+function suffixMask(s, n){
+  if(!s) return s;
+  s = String(s);
+  const len = Math.max(0, Math.min(Number(n)||0, s.length));
+  const keep = s.length - len;
+  return s.slice(0, keep) + 'X'.repeat(len);
+}
+function prefixMask(s, n){
+  if(!s) return s;
+  s = String(s);
+  const len = Math.max(0, Math.min(Number(n)||0, s.length));
+  return 'X'.repeat(len) + s.slice(len);
+}
+function maskByConfig(value, cfg){
+  if(cfg.mode==='default') return maskText(value);
+  if(cfg.mode==='suffix') return suffixMask(value, cfg.n);
+  if(cfg.mode==='prefix') return prefixMask(value, cfg.n);
+  return value; // 'none'
+}
+// 마스킹 설정을 반영해 최종 치환에 쓸 값 배열을 만듭니다.
+function applyBlankMasking(typeCode, blanks){
+  return blanks.map((v, idx)=> maskByConfig(v, getBlankMask(typeCode, idx+1)));
+}
+
+// ==================== 정답 자동생성 (커스텀 타입 전용) ====================
+// { typeCode: {mode:'manual'|'blank', blankIndex:1, extract:'full'|'prefix'|'suffix', n:4} }
+let answerConfig = {};
+function getAnswerConfig(typeCode){
+  return answerConfig[typeCode] || { mode:'manual', blankIndex:1, extract:'full', n:4 };
+}
+function setAnswerConfig(typeCode, patch){
+  answerConfig[typeCode] = Object.assign({}, getAnswerConfig(typeCode), patch);
+  scheduleDraftSave();
+}
+// row에는 blank1, blank2... (마스킹 전 원본 값)과 answer(직접입력값)가 들어있습니다.
+function computeAnswer(typeCode, row){
+  const cfg = getAnswerConfig(typeCode);
+  if(cfg.mode !== 'blank') return (row.answer||'').trim();
+  const raw = (row['blank'+cfg.blankIndex] || '').trim();
+  if(cfg.extract==='prefix') return raw.slice(0, cfg.n);
+  if(cfg.extract==='suffix') return raw.slice(-cfg.n);
+  return raw;
+}
+
+function renderBlankFields(tmpl){
+  const wrap = document.getElementById('blankFields');
+  wrap.innerHTML = '';
+  if(!tmpl){ wrap.innerHTML = '<div class="hint">템플릿을 찾을 수 없습니다.</div>'; return; }
+  const code = tmpl.code;
+  const n = countBlanks(tmpl.template);
+  if(n===0){ wrap.innerHTML = '<div class="hint">이 타입은 빈칸이 없습니다. (고정 문구 그대로 사용)</div>'; return; }
+  for(let i=1;i<=n;i++){
+    const div = document.createElement('div'); div.className='field req';
+    const label = document.createElement('label');
+    label.innerHTML = `빈칸 (${i}) 내용 <span class="badge req">필수</span>`;
+    div.appendChild(label);
+
+    const maskRow = document.createElement('div');
+    maskRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:6px;';
+    const maskSelect = document.createElement('select');
+    maskSelect.style.cssText = 'width:auto;padding:4px 8px;font-size:12px;';
+    [['none','마스킹 안함'],['default','기본(3글자마다)'],['prefix','앞 N자리만'],['suffix','뒤 N자리만']].forEach(([v,label])=>{
+      const op=document.createElement('option'); op.value=v; op.textContent=label; maskSelect.appendChild(op);
+    });
+    const cfg = getBlankMask(code, i);
+    maskSelect.value = cfg.mode;
+    const nInput = document.createElement('input'); nInput.type='number'; nInput.min='1'; nInput.value=cfg.n;
+    nInput.style.cssText = 'width:60px;padding:4px 6px;font-size:12px;';
+    const needsN = (mode)=> mode==='suffix' || mode==='prefix';
+    nInput.style.display = needsN(cfg.mode) ? 'inline-block' : 'none';
+    maskSelect.addEventListener('change', ()=>{
+      nInput.style.display = needsN(maskSelect.value) ? 'inline-block' : 'none';
+      setBlankMask(code, i, { mode: maskSelect.value });
+      updatePreview();
+    });
+    nInput.addEventListener('input', ()=>{ setBlankMask(code, i, { n: Number(nInput.value)||1 }); updatePreview(); });
+    maskRow.appendChild(maskSelect); maskRow.appendChild(nInput);
+    const nLabel = document.createElement('span'); nLabel.className='hint'; nLabel.textContent='자리';
+    nLabel.style.display = nInput.style.display;
+    maskSelect.addEventListener('change', ()=>{ nLabel.style.display = nInput.style.display; });
+    maskRow.appendChild(nLabel);
+    div.appendChild(maskRow);
+
+    const input = document.createElement('input'); input.type='text'; input.id=`f_blank_${i}`;
+    input.placeholder = `(${i})에 들어갈 문구`;
+    input.addEventListener('input', updatePreview);
+    div.appendChild(input);
+    wrap.appendChild(div);
+  }
+  renderAnswerConfigUI(code, n);
+}
+
+// 정답 자동생성 UI: 빈칸 개수(n)에 맞춰 "어느 빈칸 값을 쓸지" 옵션을 채우고, 저장된 설정을 화면에 반영합니다.
+function renderAnswerConfigUI(code, n){
+  const modeSel = document.getElementById('ans_mode');
+  const blankSel = document.getElementById('ans_blankIndex');
+  const extractSel = document.getElementById('ans_extract');
+  const nInput = document.getElementById('ans_n');
+  const answerInput = document.getElementById('f_answer');
+
+  blankSel.innerHTML = '';
+  for(let i=1;i<=n;i++){ const op=document.createElement('option'); op.value=i; op.textContent=`빈칸(${i})`; blankSel.appendChild(op); }
+
+  const cfg = getAnswerConfig(code);
+  modeSel.value = n>0 ? cfg.mode : 'manual'; // 빈칸이 없는 타입이면 자동으로 직접입력만 가능
+  blankSel.value = cfg.blankIndex;
+  extractSel.value = cfg.extract;
+  nInput.value = cfg.n;
+
+  function refreshVisibility(){
+    const isBlankMode = modeSel.value==='blank';
+    blankSel.style.display = isBlankMode ? 'inline-block' : 'none';
+    extractSel.style.display = isBlankMode ? 'inline-block' : 'none';
+    nInput.style.display = (isBlankMode && extractSel.value!=='full') ? 'inline-block' : 'none';
+    answerInput.style.display = isBlankMode ? 'none' : 'block';
+  }
+  refreshVisibility();
+
+  modeSel.onchange = ()=>{
+    if(modeSel.value==='blank' && n===0){ alert('이 타입은 빈칸이 없어서 "빈칸 값 사용"을 고를 수 없습니다.'); modeSel.value='manual'; return; }
+    setAnswerConfig(code, { mode: modeSel.value }); refreshVisibility(); updatePreview();
+  };
+  blankSel.onchange = ()=>{ setAnswerConfig(code, { blankIndex: Number(blankSel.value) }); updatePreview(); };
+  extractSel.onchange = ()=>{ setAnswerConfig(code, { extract: extractSel.value }); refreshVisibility(); updatePreview(); };
+  nInput.oninput = ()=>{ setAnswerConfig(code, { n: Number(nInput.value)||1 }); updatePreview(); };
+}
+
+function getBlankValues(count){
+  const vals = [];
+  for(let i=1;i<=count;i++){
+    const el = document.getElementById(`f_blank_${i}`);
+    vals.push(el ? el.value.trim() : '');
+  }
+  return vals;
+}
+
+document.getElementById('f_openUrl').addEventListener('input', updatePreview);
+document.getElementById('f_keyword').addEventListener('input', updatePreview);
+document.getElementById('f_answer').addEventListener('input', updatePreview);
+
+function updatePreview(){
+  const code = currentType();
+  if(!code) return;
+  try{
+    if(isLegacyType(code)){
+      const v = getLegacyValues(code);
+      const guideEl = document.getElementById('guideTextArea');
+      const guideText = guideEl ? guideEl.value : currentGuideText(code);
+      const built = LEGACY_TYPES[code].build(v, guideText);
+      showPrevTitle(code, v);
+      document.getElementById('prevQuestion').textContent = built.question;
+      document.getElementById('prevAnswer').textContent = built.answer;
+
+      // <문제>/<힌트> 자동생성 영역만 따로 보여주기 (가이드 문구를 빈 값으로 넣어서 계산)
+      const fixedEl = document.getElementById('fixedPartPreview');
+      if(fixedEl){
+        try{
+          const builtFixed = LEGACY_TYPES[code].build(v, '');
+          fixedEl.textContent = builtFixed.question.replace(/^\n+/, '');
+        }catch(e){
+          fixedEl.textContent = '(원본 데이터를 입력하면 여기에 표시됩니다)';
+        }
+      }
+    } else {
+      const tmpl = getCustomTemplate(code);
+      if(!tmpl) return;
+      const n = countBlanks(tmpl.template);
+      const rawBlanks = getBlankValues(n);
+      const blanks = applyBlankMasking(code, rawBlanks);
+      const question = substituteTemplate(tmpl.template, blanks);
+      const keyword = document.getElementById('f_keyword').value;
+      const blankRow = {}; rawBlanks.forEach((v,idx)=> blankRow['blank'+(idx+1)] = v);
+      blankRow.answer = document.getElementById('f_answer').value;
+      const answer = computeAnswer(code, blankRow);
+      showPrevTitle(code, {keyword});
+      document.getElementById('prevQuestion').textContent = question;
+      document.getElementById('prevAnswer').textContent = answer || '-';
+    }
+  }catch(e){
+    document.getElementById('prevQuestion').textContent = '(입력 필요) ' + e.message;
+  }
+}
+
+// 개별 등록 미리보기의 캠페인명 표시 (키워드가 없어서 대체 이름을 썼으면 경고 문구도 보여줌)
+function showPrevTitle(code, row){
+  const note0 = document.getElementById('prevTitleNote');
+  const hasInput = Object.keys(row).some(k=> String(row[k]===undefined||row[k]===null ? '' : row[k]).trim());
+  if(!hasInput){          // 아직 아무것도 입력하지 않았으면 캠페인명/경고를 보여주지 않습니다
+    document.getElementById('prevTitle').textContent = '-';
+    if(note0){ note0.style.display = 'none'; note0.textContent = ''; }
+    return;
+  }
+  const adv = (document.getElementById('globalAdvertiserId').value||'').trim();
+  const ti = makeTitle(code, Object.assign({advertiserId: adv}, row), campaigns.length+1);
+  document.getElementById('prevTitle').textContent = ti.title;
+  const note = document.getElementById('prevTitleNote');
+  if(note){
+    note.style.display = ti.fallback ? 'block' : 'none';
+    note.textContent = ti.fallback ? `⚠ 키워드가 없어 ${ti.source} 기준으로 캠페인명을 만들었어요.` : '';
+  }
+}
+
+// 부작용 없이 캠페인 데이터만 계산 (등록 대기 목록에 추가하지 않음) - 엑셀 내보내기에서도 재사용
+function buildCampaignData(typeCode, row){
+  const startAt = row.startAt, endAt = row.endAt;
+  const totalQuota = parseNum(row.totalQuota), dailyQuota = parseNum(row.dailyQuota);
+  if(!startAt || !endAt || isNaN(totalQuota) || isNaN(dailyQuota)){
+    return {success:false, error:'시작일/종료일/전체참여한도/일참여한도는 필수입니다.'};
+  }
+
+  let built, openUrl, keyword, imageUrl;
+
+  if(isLegacyType(typeCode)){
+    const type = LEGACY_TYPES[typeCode];
+    const missing = type.fields.filter(f=>f.req && !row[f.id]).map(f=>f.label);
+    if(missing.length) return {success:false, error:'필수 항목 누락: '+missing.join(', ')};
+    const guideText = row.guideText || currentGuideText(typeCode);
+    try{ built = type.build(row, guideText); }
+    catch(e){ return {success:false, error:e.message}; }
+    openUrl = row[type.openUrlField] || '';
+    keyword = row.keyword || '';
+    imageUrl = row.image_url || '';
+  } else {
+    const tmpl = getCustomTemplate(typeCode);
+    if(!tmpl) return {success:false, error:'선택된 타입의 템플릿을 찾을 수 없습니다.'};
+    if(!row.openUrl) return {success:false, error:'오픈URL은 필수입니다.'};
+    const n = countBlanks(tmpl.template);
+    const blanks = [];
+    for(let i=1;i<=n;i++){
+      const v = row['blank'+i];
+      if(!v) return {success:false, error:`빈칸 (${i}) 내용이 비어있습니다.`};
+      blanks.push(v);
+    }
+    const answer = computeAnswer(typeCode, row);
+    if(!answer) return {success:false, error:'정답을 확인할 수 없습니다. (직접 입력 또는 빈칸 값 설정을 확인해주세요)'};
+    const question = substituteTemplate(tmpl.template, applyBlankMasking(typeCode, blanks));
+    built = { question, answer, title: autoTitle(row.keyword) };
+    openUrl = row.openUrl;
+    keyword = row.keyword;
+    imageUrl = '';
+  }
+
+  const titleInfo = makeTitle(typeCode, row, row.rowNo || (campaigns.length+1));
+  const campaign = {
+    code: row.code || '', type: typeCode, title: titleInfo.title,
+    openUrl, startAt, endAt, totalQuota, dailyQuota,
+    quiz: [{ id:1, question: built.question, answer: built.answer, keyword: splitKeywords(keyword) }]
+  };
+  if(row.hintUrl){ campaign.hintUrl = [row.hintUrl]; }
+  if(imageUrl){ campaign.imageUrl = imageUrl; }
+  if(row.advertiserId){ campaign.advertiserId = row.advertiserId; }
+
+  return {success:true, campaign, titleInfo};
+}
+
+function tryAddCampaign(typeCode, row){
+  const result = buildCampaignData(typeCode, row);
+  if(!result.success) return result;
+
+  const campaign = result.campaign;
+  campaign.code = campaign.code || autoCode(typeCode, campaigns.length);
+  if(campaigns.some(c=>c.code===campaign.code)) return {success:false, error:'캠페인 코드 중복: '+campaign.code};
+
+  campaigns.push(campaign);
+  return {success:true, campaign};
+}
+
+document.getElementById('btnAdd').addEventListener('click', ()=>{
+  const code = currentType();
+  if(!code){ alert('캠페인 타입을 먼저 선택해주세요.'); return; }
+
+  const row = {
+    startAt: document.getElementById('f_startAt').value.trim(),
+    endAt: document.getElementById('f_endAt').value.trim(),
+    totalQuota: document.getElementById('f_totalQuota').value.trim(),
+    dailyQuota: document.getElementById('f_dailyQuota').value.trim(),
+    hintUrl: document.getElementById('f_hintUrl').value.trim(),
+    advertiserId: document.getElementById('globalAdvertiserId').value.trim(),
+  };
+
+  if(isLegacyType(code)){
+    Object.assign(row, getLegacyValues(code));
+    row.guideText = document.getElementById('guideTextArea').value;
+  } else {
+    row.openUrl = document.getElementById('f_openUrl').value.trim();
+    row.keyword = document.getElementById('f_keyword').value.trim();
+    row.answer = document.getElementById('f_answer').value.trim();
+    const tmpl = getCustomTemplate(code);
+    const n = tmpl ? countBlanks(tmpl.template) : 0;
+    for(let i=1;i<=n;i++){ row['blank'+i] = document.getElementById(`f_blank_${i}`).value.trim(); }
+  }
+
+  const result = tryAddCampaign(code, row);
+  if(!result.success){ alert(result.error); return; }
+  renderList();
+  document.getElementById('jsonOut').style.display='none';
+  document.getElementById('jsonActions').style.display='none';
+});
+
+document.getElementById('modeIndividual').addEventListener('click', ()=> setMode('individual'));
+document.getElementById('modeBulk').addEventListener('click', ()=> setMode('bulk'));
+document.getElementById('modeMulti').addEventListener('click', ()=> setMode('multi'));
+document.getElementById('modeBalance').addEventListener('click', ()=> setMode('balance'));
+document.getElementById('modePermissions').addEventListener('click', ()=> setMode('permissions'));
+// "일괄 등록 방법" 안내 창: 일괄 등록 옆 ? 버튼으로 언제든 열 수 있고, 이 브라우저에서 처음 일괄 등록에 들어올 때만 자동으로 한 번 열립니다.
+function openHelp(){
+  const m = document.getElementById('helpModal'); m.style.display = 'flex';
+  const ok = document.getElementById('btnHelpOk'); if(ok) ok.focus();
+}
+function closeHelp(){
+  document.getElementById('helpModal').style.display = 'none';
+  if(window.__pendingAfterHelp){ const f = window.__pendingAfterHelp; window.__pendingAfterHelp = null; setTimeout(f, 150); }
+}
+function initBulkHowTo(){
+  if(window.__bulkHowToInited) return;
+  window.__bulkHowToInited = true;
+  let seen = false;
+  try{ seen = localStorage.getItem('crt_bulk_howto_seen') === '1'; }catch(e){}
+  if(!seen) openHelp();
+  try{ localStorage.setItem('crt_bulk_howto_seen', '1'); }catch(e){}
+}
+document.getElementById('btnBulkHelp').addEventListener('click', openHelp);
+document.getElementById('btnHelpClose').addEventListener('click', closeHelp);
+document.getElementById('btnHelpOk').addEventListener('click', closeHelp);
+document.getElementById('helpModal').addEventListener('click', (e)=>{ if(e.target.id==='helpModal') closeHelp(); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && document.getElementById('helpModal').style.display!=='none') closeHelp(); });
+
+function setMode(mode){
+  // 권한이 없는 화면으로는 들어갈 수 없습니다 (메뉴가 숨겨져 있어도 한 번 더 막습니다)
+  if(!canUse(mode)) mode = defaultModeForUser();
+  currentMode = mode;
+  const bc = document.getElementById('breadcrumbCurrent');
+  if(bc) bc.textContent = ({individual:'개별 등록', bulk:'일괄 등록', multi:'다문제 등록', balance:'잔액 관리', permissions:'권한 관리'})[mode] || '';
+  const hb = document.getElementById('btnBulkHelp');
+  if(hb) hb.style.display = mode==='bulk' ? 'inline-flex' : 'none';
+  const rb = document.getElementById('btnRefreshAll');
+  if(rb) rb.style.display = (mode==='balance' || mode==='permissions') ? 'none' : '';
+  document.getElementById('modePermissions').classList.toggle('active', mode==='permissions');
+  document.getElementById('permissionsMode').style.display = mode==='permissions' ? 'block':'none';
+  document.getElementById('modeIndividual').classList.toggle('active', mode==='individual');
+  document.getElementById('modeBulk').classList.toggle('active', mode==='bulk');
+  document.getElementById('modeMulti').classList.toggle('active', mode==='multi');
+  document.getElementById('modeBalance').classList.toggle('active', mode==='balance');
+  document.getElementById('individualMode').style.display = mode==='individual' ? 'block':'none';
+  document.getElementById('bulkMode').style.display = mode==='bulk' ? 'block':'none';
+  document.getElementById('multiMode').style.display = mode==='multi' ? 'block':'none';
+  document.getElementById('previewCard').style.display = mode==='individual' ? 'block':'none';
+  const regHidden = (mode==='balance' || mode==='permissions');
+  document.getElementById('registrationCommonCards').style.display = regHidden ? 'none':'block';
+  document.getElementById('registrationLayout').style.display = regHidden ? 'none':'grid';
+  document.getElementById('balanceMode').style.display = mode==='balance' ? 'block':'none';
+  // 개별등록(실시간 미리보기 있음)일 때만 2단으로, 그 외(일괄/다문제)는 우측 빈 칸을 접어서 좌측이 전체 폭을 쓰게 합니다.
+  document.getElementById('registrationLayout').style.gridTemplateColumns = mode==='individual' ? 'minmax(0,1.4fr) minmax(0,1fr)' : 'minmax(0,1fr)';
+  document.getElementById('rightColumn').style.display = mode==='individual' ? 'block' : 'none';
+  if(mode==='bulk'){ renderGrid(); refreshBulkGuideCard(); initBulkHowTo(); }
+  if(mode==='multi'){ refreshMultiMode(); }
+  if(mode==='balance'){ refreshBalanceOverview(); }
+  if(mode==='permissions'){ loadPermissions(); }
+  updateDraftBanner(); updateUndoButtons();
+}
+
+function refreshMultiMode(){
+  const code = currentType();
+  const supported = MULTI_TYPES[code];
+  document.getElementById('multiNotSupported').style.display = supported ? 'none' : 'block';
+  document.getElementById('multiGuideCard').style.display = supported ? 'block' : 'none';
+  document.getElementById('multiGridCard').style.display = supported ? 'block' : 'none';
+  document.getElementById('multiStartTypeCard').style.display = (supported && MULTI_TYPES[code].getPerQuestionFields) ? 'block' : 'none';
+  if(!supported) return;
+
+  if(MULTI_TYPES[code].getPerQuestionFields){
+    document.getElementById('multiStartTypeSelect').value = getMultiStartType(code);
+    // 아직 가이드를 따로 고른 적이 없다면, 기준지점에 맞는 기본값으로 맞춰줍니다.
+    if(!selectedGuideName[code]){
+      const matchingDefaultName = `기본값(${getMultiStartType(code)})`;
+      if(getGuideOptions(code).some(o=>o.name===matchingDefaultName)) selectedGuideName[code] = matchingDefaultName;
+    }
+  }
+
+  const sel = document.getElementById('multiGuideNameSelect');
+  const options = getGuideOptions(code);
+  const selectedName = selectedGuideName[code] || defaultSelectedName(code);
+  sel.innerHTML = options.map(o=>`<option value="${o.name}"${o.name===selectedName?' selected':''}>${o.name}</option>`).join('');
+  document.getElementById('multiGuideTextArea').value = getGuideTextByName(code, selectedName);
+
+  renderMultiGrid();
+}
+document.getElementById('multiStartTypeSelect').addEventListener('change', ()=>{
+  const code = currentType();
+  if(!MULTI_TYPES[code] || !MULTI_TYPES[code].getPerQuestionFields) return;
+  const newValue = document.getElementById('multiStartTypeSelect').value;
+  if(!confirm('기준지점을 바꾸면 지금 입력하신 문제별 데이터가 초기화됩니다. 계속할까요?')){
+    document.getElementById('multiStartTypeSelect').value = getMultiStartType(code); // 취소 시 원래 값으로 되돌림
+    return;
+  }
+  multiStartType[code] = newValue;
+  multiGridByType[code] = emptyMultiGrid(code, 10);
+
+  // 가이드 문구도 방금 고른 기준지점(명소/출발지)에 맞는 기본값으로 함께 맞춰줍니다.
+  const matchingDefaultName = `기본값(${newValue})`;
+  if(getGuideOptions(code).some(o=>o.name===matchingDefaultName)){
+    selectedGuideName[code] = matchingDefaultName;
+  }
+
+  renderMultiGrid();
+  refreshGuideDisplayOnly(code); // 가이드 드롭박스/텍스트만 다시 그림 (그리드는 이미 위에서 갱신함)
+});
+
+function refreshGuideDisplayOnly(code){
+  const sel = document.getElementById('multiGuideNameSelect');
+  const options = getGuideOptions(code);
+  const selectedName = selectedGuideName[code] || defaultSelectedName(code);
+  sel.innerHTML = options.map(o=>`<option value="${o.name}"${o.name===selectedName?' selected':''}>${o.name}</option>`).join('');
+  document.getElementById('multiGuideTextArea').value = getGuideTextByName(code, selectedName);
+}
+document.getElementById('multiGuideNameSelect').addEventListener('change', ()=>{
+  const code = currentType();
+  const name = document.getElementById('multiGuideNameSelect').value;
+  selectedGuideName[code] = name;
+  document.getElementById('multiGuideTextArea').value = getGuideTextByName(code, name);
+});
+
+function refreshBulkGuideCard(){
+  const code = currentType();
+  const card = document.getElementById('bulkGuideCard');
+  if(!code || !isLegacyType(code)){ card.style.display='none'; return; }
+  card.style.display = 'block';
+
+  const sel = document.getElementById('bulkGuideNameSelect');
+  const options = getGuideOptions(code);
+  const selectedName = selectedGuideName[code] || defaultSelectedName(code);
+  sel.innerHTML = options.map(o=>`<option value="${o.name}"${o.name===selectedName?' selected':''}>${o.name}</option>`).join('');
+  document.getElementById('bulkGuideTextArea').value = getGuideTextByName(code, selectedName);
+  document.getElementById('bulkGuideSaveName').value = selectedName;
+  document.getElementById('bulkGuideSaveResult').innerHTML = '';
+}
+document.getElementById('bulkGuideNameSelect').addEventListener('change', ()=>{
+  const code = currentType();
+  const name = document.getElementById('bulkGuideNameSelect').value;
+  selectedGuideName[code] = name;
+  document.getElementById('bulkGuideTextArea').value = getGuideTextByName(code, name);
+  document.getElementById('bulkGuideSaveName').value = name;
+});
+
+document.getElementById('btnSaveGuideBulk').addEventListener('click', async ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  const name = document.getElementById('bulkGuideSaveName').value.trim();
+  if(!name){ alert('저장할 이름을 입력해주세요.'); return; }
+  const guideText = document.getElementById('bulkGuideTextArea').value;
+  const resEl = document.getElementById('bulkGuideSaveResult');
+  resEl.innerHTML = '저장 중...';
+  try{
+    const data = await saveGuideAs(code, name, guideText);
+    if(data.success){
+      resEl.innerHTML = `<div class="apiresult ok">✅ "${name}" 이름으로 저장되었습니다.</div>`;
+      refreshBulkGuideCard();
+      if(currentType()===code) refreshGuideTextArea(code); // 개별 등록 화면도 동기화
+    } else {
+      resEl.innerHTML = `<div class="apiresult err">❌ ${data.error||'저장 실패'}</div>`;
+    }
+  }catch(e){
+    resEl.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${e.message}</div>`;
+  }
+});
+
+document.getElementById('btnDeleteGuideBulk').addEventListener('click', async ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  const name = document.getElementById('bulkGuideNameSelect').value;
+  if(name.startsWith('기본값')){ alert('기본값은 삭제할 수 없습니다.'); return; }
+  if(!confirm(`"${name}" 저장본을 삭제할까요?`)) return;
+  const resEl = document.getElementById('bulkGuideSaveResult');
+  const data = await deleteGuideName(code, name);
+  resEl.innerHTML = data.success
+    ? `<div class="apiresult ok">✅ 삭제되었습니다.</div>`
+    : `<div class="apiresult err">❌ ${data.error||'삭제 실패'}</div>`;
+  refreshBulkGuideCard();
+});
+
+document.getElementById('btnResetGuideBulk').addEventListener('click', ()=>{
+  const code = currentType();
+  if(!code || !isLegacyType(code)) return;
+  document.getElementById('bulkGuideTextArea').value = getDefaultGuideOptions(code)[0].guideText;
+});
+
+// ==================== 다문제 등록 (NPN0/NPM0 전용) ====================
+// 한 캠페인(행) 안에 문제#1, #2, #3...을 여러 개 만들 수 있습니다.
+const MULTI_TYPES = {
+  NPN0: {
+    perQuestionFields: [{ id:'spot', label:'명소' }],
+    // i번째 문제: "i번째 명소 입력하기" (자동 최단명 선택 없이, 입력한 순서 그대로 각각 문제화)
+    buildQuestion(i, common, qv, guideText){
+      const spot = (qv.spot||'').trim();
+      if(!spot) return null;
+      const place = (common.place_name||'').trim();
+      return {
+        question: `${guideText}\n\n<문제>  \n${i} 번째 명소 입력하기\n\n<힌트>\n플레이스명: ${maskText(place)}`,
+        answer: spot,
+        aux: ''
+      };
+    }
+  },
+  NPM0: {
+    // 기준지점(명소/출발지)은 문제마다 고르지 않고, 위에서 한 번만 선택해서 전체 문제에 공통 적용합니다.
+    getPerQuestionFields(startType){
+      if(startType==='출발지'){
+        return [
+          { id:'ref_name', label:'출발지명' },
+          { id:'distance_answer', label:'정답거리(m 또는 km)' }
+        ];
+      }
+      return [
+        { id:'order_n', label:'n번째' },
+        { id:'ref_name', label:'명소명' },
+        { id:'distance_answer', label:'정답거리(m 또는 km)' }
+      ];
+    },
+    buildQuestion(i, common, qv, guideText, startType){
+      const refName = (qv.ref_name||'').trim();
+      if(!refName) return null;
+      const place = (common.place_name||'').trim();
+      const answer = distanceRange(qv.distance_answer);
+      const maskedPlace = maskText(place);
+      let question;
+      if(startType==='출발지'){
+        question = `${guideText}\n\n<문제>  \n''가장 빠른'' 거리 입력 (@@@m, @.@km)\n\n<힌트>\n플레이스명: ${maskedPlace}\n출발지: ${refName}`;
+      } else {
+        const n = (qv.order_n||'').trim();
+        const maskedRef = halfMask(refName);
+        question = `${guideText}\n\n<문제>  \n''가장 빠른'' 거리 입력 (@@@m, @.@km)\n\n<힌트>\n플레이스명: ${maskedPlace}\n${n}번쨰 명소: ${maskedRef}`;
+      }
+      return { question, answer, aux: refName };
+    }
+  }
+};
+
+const MULTI_COMMON_COLS = [
+  {id:'startAt', label:'시작일', req:true},
+  {id:'endAt', label:'종료일', req:true},
+  {id:'totalQuota', label:'전체참여한도', req:true},
+  {id:'dailyQuota', label:'일참여한도', req:true},
+  {id:'hintUrl', label:'랜딩URL', req:false},
+  {id:'place_url', label:'플레이스URL', req:true},
+  {id:'keyword', label:'키워드(,구분)', req:false},
+  {id:'place_name', label:'플레이스명', req:true}
+];
+
+let multiQuestionCount = {}; // { typeCode: 문제개수 } 기본 3개로 시작
+let multiGridByType = {};
+let multiStartType = {}; // { 'NPM0': '명소'|'출발지' } - 전체 문제 공통 기준지점
+
+function getMultiQuestionCount(typeCode){
+  if(!multiQuestionCount[typeCode]) multiQuestionCount[typeCode] = 3;
+  return multiQuestionCount[typeCode];
+}
+function getMultiStartType(typeCode){
+  return multiStartType[typeCode] || '명소';
+}
+function getMultiPerQuestionFields(typeCode){
+  const type = MULTI_TYPES[typeCode];
+  if(!type) return [];
+  return type.getPerQuestionFields ? type.getPerQuestionFields(getMultiStartType(typeCode)) : type.perQuestionFields;
+}
+
+function getMultiColumnMeta(typeCode){
+  const type = MULTI_TYPES[typeCode];
+  if(!type) return MULTI_COMMON_COLS.slice();
+  const qCount = getMultiQuestionCount(typeCode);
+  const perQFields = getMultiPerQuestionFields(typeCode);
+  const cols = MULTI_COMMON_COLS.slice();
+  for(let q=1;q<=qCount;q++){
+    perQFields.forEach(f=>{
+      cols.push({ id:`q${q}_${f.id}`, label:`${f.label}(문제${q})`, req:false, selectOptions:f.select });
+    });
+  }
+  return cols;
+}
+function getMultiColumnOrder(typeCode){ return getMultiColumnMeta(typeCode).map(c=>c.id); }
+
+function emptyMultiGrid(typeCode, rows){
+  const n = getMultiColumnMeta(typeCode).length;
+  return Array.from({length: rows}, ()=> Array(n).fill(''));
+}
+function getMultiGrid(typeCode){
+  if(!multiGridByType[typeCode]) multiGridByType[typeCode] = emptyMultiGrid(typeCode, 10);
+  return multiGridByType[typeCode];
+}
+
+// 부작용 없이 다문제 캠페인 데이터 계산 (개별 등록/엑셀 내보내기 공용)
+function buildMultiCampaignData(typeCode, row){
+  const type = MULTI_TYPES[typeCode];
+  if(!type) return {success:false, error:'다문제는 NPN0/NPM0만 지원합니다.'};
+
+  const startAt=row.startAt, endAt=row.endAt;
+  const totalQuota=parseNum(row.totalQuota), dailyQuota=parseNum(row.dailyQuota);
+  if(!startAt || !endAt || isNaN(totalQuota) || isNaN(dailyQuota)){
+    return {success:false, error:'시작일/종료일/전체참여한도/일참여한도는 필수입니다.'};
+  }
+  if(!row.place_url || !row.place_name){
+    return {success:false, error:'플레이스URL/플레이스명은 필수입니다.'};
+  }
+
+  const guideText = currentGuideText(typeCode);
+  const qCount = getMultiQuestionCount(typeCode);
+  const startType = getMultiStartType(typeCode);
+  const perQFields = getMultiPerQuestionFields(typeCode);
+  const quiz = [];
+  const aux = [];
+  for(let q=1;q<=qCount;q++){
+    const qv = {};
+    perQFields.forEach(f=>{ qv[f.id] = row[`q${q}_${f.id}`] || ''; });
+    let built;
+    try{ built = type.buildQuestion(q, row, qv, guideText, startType); }
+    catch(e){ return {success:false, error:`문제${q}: ${e.message}`}; }
+    if(!built) continue; // 그 문제 칸이 비어있으면 건너뜀
+    quiz.push({ id: quiz.length+1, question: built.question, answer: built.answer, keyword: splitKeywords(row.keyword) });
+    aux.push(built.aux || '');
+  }
+  if(quiz.length===0) return {success:false, error:'최소 1개 이상의 문제 칸을 입력해야 합니다.'};
+
+  const campaign = {
+    code: row.code || '', type: typeCode, title: makeTitle(typeCode, row, row.rowNo || 1).title,
+    openUrl: row.place_url, startAt, endAt, totalQuota, dailyQuota, quiz
+  };
+  if(row.hintUrl){ campaign.hintUrl = [row.hintUrl]; }
+  if(row.advertiserId){ campaign.advertiserId = row.advertiserId; }
+
+  return {success:true, campaign, aux};
+}
+
+function tryAddMultiCampaign(typeCode, row){
+  const result = buildMultiCampaignData(typeCode, row);
+  if(!result.success) return result;
+  const campaign = result.campaign;
+  campaign.code = campaign.code || autoCode(typeCode, campaigns.length);
+  if(campaigns.some(c=>c.code===campaign.code)) return {success:false, error:'캠페인 코드 중복: '+campaign.code};
+  campaigns.push(campaign);
+  return {success:true, campaign};
+}
+
+// ---- 다문제 그리드 렌더링 (일괄등록 그리드와 동일한 방식, 별도 상태로 관리) ----
+let multiActiveCell = {r:0, c:0};
+const multiFillHandleEl = document.createElement('div');
+multiFillHandleEl.className = 'fillhandle';
+
+function renderMultiGrid(){
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  histEnsure('multi', typeCode);
+  const meta = getMultiColumnMeta(typeCode);
+  const grid = getMultiGrid(typeCode);
+  const table = document.getElementById('multiGridTable');
+  table.innerHTML = '';
+
+  document.getElementById('multiQuestionCountLabel').textContent = `현재 문제 칸: ${getMultiQuestionCount(typeCode)}개`;
+
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  trh.appendChild(document.createElement('th'));
+  meta.forEach(c=>{
+    const th=document.createElement('th');
+    th.innerHTML = c.label + ' <span class="badge '+(c.req?'req">필수':'opt">선택')+'</span>';
+    trh.appendChild(th);
+  });
+  trh.appendChild(document.createElement('th'));
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  grid.forEach((rowArr, r)=>{
+    const tr=document.createElement('tr');
+    const tdNum=document.createElement('td'); tdNum.className='rownum'; tdNum.textContent=(r+1);
+    tr.appendChild(tdNum);
+
+    meta.forEach((c, ci)=>{
+      const td=document.createElement('td');
+      td.dataset.r=r; td.dataset.c=ci;
+      let input;
+      if(c.selectOptions){
+        input=document.createElement('select');
+        const blank=document.createElement('option'); blank.value=''; blank.textContent='(선택)'; input.appendChild(blank);
+        c.selectOptions.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; input.appendChild(op); });
+      } else {
+        input=document.createElement('input'); input.type='text';
+        if(c.id==='hintUrl'){ input.setAttribute('list','hintUrlOptions'); }
+      }
+      input.value = rowArr[ci] || '';
+      input.addEventListener('input', ()=>{ grid[r][ci]=input.value; scheduleHistCommit('multi'); scheduleDraftSave(); });
+      input.addEventListener('change', ()=>{ grid[r][ci]=input.value; scheduleHistCommit('multi'); scheduleDraftSave(); });
+      input.addEventListener('paste', (e)=> handleMultiGridPaste(e, r, ci));
+      input.addEventListener('focus', ()=>{ multiActiveCell={r,c:ci}; td.appendChild(multiFillHandleEl); });
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+
+    const tdDel=document.createElement('td'); tdDel.className='delcell';
+    const delBtn=document.createElement('button'); delBtn.className='btn-danger'; delBtn.textContent='삭제';
+    delBtn.onclick=()=>{ grid.splice(r,1); renderMultiGrid(); };
+    tdDel.appendChild(delBtn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  placeMultiHandleAtActive();
+  scheduleHistCommit('multi'); scheduleDraftSave(); updateUndoButtons();
+}
+
+function placeMultiHandleAtActive(){
+  const table = document.getElementById('multiGridTable');
+  const td = table.querySelector(`td[data-r="${multiActiveCell.r}"][data-c="${multiActiveCell.c}"]`);
+  if(td) td.appendChild(multiFillHandleEl);
+}
+
+function handleMultiGridPaste(e, r, c){
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if(!text) return;
+  let lines = text.replace(/\r/g,'').split('\n');
+  if(lines.length && lines[lines.length-1]==='') lines.pop();
+  const isMulti = lines.length>1 || lines[0].indexOf('\t')>=0;
+  if(!isMulti) return;
+
+  e.preventDefault();
+  const typeCode = currentType();
+  const grid = getMultiGrid(typeCode);
+  const colCount = getMultiColumnMeta(typeCode).length;
+  while(grid.length < r + lines.length){ grid.push(Array(colCount).fill('')); }
+
+  lines.forEach((line, li)=>{
+    const cells = line.split('\t');
+    cells.forEach((val, ci)=>{
+      const targetCol = c + ci;
+      if(targetCol < colCount){ grid[r+li][targetCol] = val; }
+    });
+  });
+  renderMultiGrid();
+}
+
+let multiIsFilling=false, multiFillSourceR=null, multiFillSourceC=null, multiFillSourceVal=null, multiFillTargetR=null;
+multiFillHandleEl.addEventListener('mousedown', (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  multiIsFilling = true;
+  multiFillSourceR = multiActiveCell.r; multiFillSourceC = multiActiveCell.c;
+  multiFillSourceVal = getMultiGrid(currentType())[multiFillSourceR][multiFillSourceC];
+  document.addEventListener('mousemove', onMultiFillMouseMove);
+  document.addEventListener('mouseup', onMultiFillMouseUp);
+});
+function onMultiFillMouseMove(e){
+  if(!multiIsFilling) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const td = el && el.closest ? el.closest('td[data-r]') : null;
+  if(td && Number(td.dataset.c)===multiFillSourceC){
+    multiFillTargetR = parseInt(td.dataset.r, 10);
+    document.querySelectorAll('#multiGridTable td.selected').forEach(t=>t.classList.remove('selected'));
+    const r1=Math.min(multiFillSourceR,multiFillTargetR), r2=Math.max(multiFillSourceR,multiFillTargetR);
+    for(let rr=r1; rr<=r2; rr++){
+      const cell = document.querySelector(`#multiGridTable td[data-r="${rr}"][data-c="${multiFillSourceC}"]`);
+      if(cell) cell.classList.add('selected');
+    }
+  }
+}
+function onMultiFillMouseUp(){
+  if(!multiIsFilling) return;
+  multiIsFilling=false;
+  document.removeEventListener('mousemove', onMultiFillMouseMove);
+  document.removeEventListener('mouseup', onMultiFillMouseUp);
+  document.querySelectorAll('#multiGridTable td.selected').forEach(t=>t.classList.remove('selected'));
+  if(multiFillTargetR===null || multiFillTargetR===multiFillSourceR){ multiFillTargetR=null; return; }
+  const grid = getMultiGrid(currentType());
+  const r1=Math.min(multiFillSourceR,multiFillTargetR), r2=Math.max(multiFillSourceR,multiFillTargetR);
+  for(let rr=r1; rr<=r2; rr++){
+    if(rr===multiFillSourceR) continue;
+    if(rr<grid.length) grid[rr][multiFillSourceC] = multiFillSourceVal;
+  }
+  multiActiveCell = {r:multiFillSourceR, c:multiFillSourceC};
+  multiFillTargetR = null;
+  renderMultiGrid();
+}
+
+document.getElementById('btnMultiAddQuestion').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  const oldMeta = getMultiColumnMeta(typeCode);
+  multiQuestionCount[typeCode] = getMultiQuestionCount(typeCode) + 1;
+  const newColCount = getMultiColumnMeta(typeCode).length;
+  const addedCols = newColCount - oldMeta.length;
+  const grid = getMultiGrid(typeCode);
+  grid.forEach(rowArr=>{ for(let i=0;i<addedCols;i++) rowArr.push(''); });
+  renderMultiGrid();
+});
+document.getElementById('btnMultiRemoveQuestion').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  if(getMultiQuestionCount(typeCode) <= 1){ alert('문제 칸은 최소 1개 있어야 합니다.'); return; }
+  const oldMeta = getMultiColumnMeta(typeCode);
+  multiQuestionCount[typeCode] = getMultiQuestionCount(typeCode) - 1;
+  const newColCount = getMultiColumnMeta(typeCode).length;
+  const removedCols = oldMeta.length - newColCount;
+  const grid = getMultiGrid(typeCode);
+  grid.forEach(rowArr=>{ rowArr.splice(rowArr.length-removedCols, removedCols); });
+  renderMultiGrid();
+});
+
+document.getElementById('btnMultiAddRows').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  const grid = getMultiGrid(typeCode);
+  const colCount = getMultiColumnMeta(typeCode).length;
+  for(let i=0;i<10;i++) grid.push(Array(colCount).fill(''));
+  renderMultiGrid();
+});
+
+document.getElementById('btnMultiClearGrid').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  if(!confirm('현재 타입의 다문제 그리드 내용을 모두 지울까요?')) return;
+  multiGridByType[typeCode] = emptyMultiGrid(typeCode, 10);
+  renderMultiGrid();
+  document.getElementById('multiGridResult').innerHTML='';
+});
+
+document.getElementById('btnMultiGridSubmit').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  const grid = getMultiGrid(typeCode);
+  const cols = getMultiColumnOrder(typeCode);
+  let ok=0; const errors=[];
+
+  grid.forEach((rowArr, i)=>{
+    if(rowArr.every(v=>!v || !String(v).trim())) return;
+    const row={};
+    cols.forEach((id, idx)=> row[id] = (rowArr[idx]||'').trim());
+    row.advertiserId = document.getElementById('globalAdvertiserId').value.trim();
+    const result = tryAddMultiCampaign(typeCode, row);
+    if(result.success) ok++;
+    else errors.push(`${i+1}행: ${result.error}`);
+  });
+
+  renderList();
+  document.getElementById('jsonOut').style.display='none';
+  document.getElementById('jsonActions').style.display='none';
+
+  const resEl=document.getElementById('multiGridResult');
+  let html = `<div class="apiresult ${errors.length? 'err':'ok'}">✅ 성공: ${ok}건 / ❌ 실패: ${errors.length}건`;
+  if(errors.length) html += "\n\n"+errors.join("\n");
+  html += "</div>";
+  resEl.innerHTML = html;
+});
+
+document.getElementById('btnMultiDownloadXlsx').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다.'); return; }
+  const meta = getMultiColumnMeta(typeCode);
+  const grid = getMultiGrid(typeCode);
+  const aoa = [meta.map(m=>m.label)].concat(grid);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, typeCode);
+  XLSX.writeFile(wb, `${typeCode}_다문제_원본데이터.xlsx`);
+});
+
+document.getElementById('multiFileUploadXlsx').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  const typeCode = currentType();
+  if(!file || !MULTI_TYPES[typeCode]) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다.'); return; }
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    const data = new Uint8Array(evt.target.result);
+    const wb = XLSX.read(data, {type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+    const dataRows = rows.slice(1);
+    const colCount = getMultiColumnMeta(typeCode).length;
+    const newGrid = dataRows.map(r=>{
+      const arr = Array(colCount).fill('');
+      for(let i=0;i<Math.min(colCount, r.length); i++){ arr[i] = (r[i]===undefined||r[i]===null) ? '' : String(r[i]); }
+      return arr;
+    });
+    while(newGrid.length < 10) newGrid.push(Array(colCount).fill(''));
+    multiGridByType[typeCode] = newGrid;
+    multiActiveCell = {r:0, c:0};
+    renderMultiGrid();
+    e.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+// ---- 다문제 전용 "일괄등록 양식" 엑셀 (문제#1은 공통칸 재사용, 문제#2부터는 키워드/문제/정답/보조 4칸씩) ----
+function buildMultiLegacyRows(typeCode){
+  const grid = getMultiGrid(typeCode);
+  const cols = getMultiColumnOrder(typeCode);
+  const qCount = getMultiQuestionCount(typeCode);
+
+  const header = [
+    '#','광고주ID','캠페인타입','캠페인명','시작일시','종료일시','전체참여인원','일최대참여인원',
+    '광고단가','광고예산','힌트랜딩URL','플레이스URL','키워드','','','','',
+    '문제','정답','','','',''
+  ];
+  for(let q=2;q<=qCount;q++){ header.push('키워드','문제','정답','보조'); }
+
+  const dataRows = [];
+  const errors = [];
+  let rowNum = 1;
+
+  grid.forEach((rowArr, i)=>{
+    if(rowArr.every(v=>!v || !String(v).trim())) return;
+    const row = {};
+    cols.forEach((id, idx)=> row[id] = (rowArr[idx]||'').trim());
+    row.advertiserId = document.getElementById('globalAdvertiserId').value.trim();
+
+    const result = buildMultiCampaignData(typeCode, row);
+    if(!result.success){ errors.push(`${i+1}행: ${result.error}`); return; }
+    const c = result.campaign;
+    const quiz = c.quiz;
+    const aux = result.aux;
+
+    const line = [
+      rowNum++, (c.advertiserId || ''), c.type, c.title,
+      toDateOrString(c.startAt), toDateOrString(c.endAt),
+      Number(c.totalQuota)||0, Number(c.dailyQuota)||0,
+      '', '',
+      row.hintUrl || '', c.openUrl, row.keyword,
+      '', '', '', '',
+      quiz[0] ? quiz[0].question : '', quiz[0] ? quiz[0].answer : '',
+      '', '', '', ''
+    ];
+    for(let q=2;q<=qCount;q++){
+      const idx = q-1;
+      if(quiz[idx]){
+        line.push(row.keyword, quiz[idx].question, quiz[idx].answer, aux[idx]||'');
+      } else {
+        line.push('', '', '', '');
+      }
+    }
+    dataRows.push(line);
+  });
+
+  const aoa = [[], ['접수날짜', new Date()], [], header].concat(dataRows);
+  return { aoa, errors };
+}
+
+document.getElementById('btnMultiDownloadLegacyXlsx').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!MULTI_TYPES[typeCode]) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다.'); return; }
+
+  const { aoa, errors } = buildMultiLegacyRows(typeCode);
+  const resEl = document.getElementById('multiGridResult');
+  if(aoa.length <= 4){
+    resEl.innerHTML = `<div class="apiresult err">❌ 다운로드할 데이터가 없습니다. 그리드를 채워주세요.</div>`;
+    return;
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  setDateOnlyFormat(ws);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, typeCode);
+  XLSX.writeFile(wb, buildExportFileName(typeCode, '_다문제_일괄등록양식.xlsx'));
+
+  resEl.innerHTML = errors.length
+    ? `<div class="apiresult err">⚠️ ${aoa.length-4}건 다운로드 완료 (오류로 제외된 행 ${errors.length}건)<br>${errors.join('<br>')}</div>`
+    : `<div class="apiresult ok">✅ ${aoa.length-4}건 모두 정상적으로 다운로드되었습니다.</div>`;
+});
+
+const COMMON_BASE = [
+  {id:'startAt', label:'시작일', req:true},
+  {id:'endAt', label:'종료일', req:true},
+  {id:'totalQuota', label:'전체참여한도', req:true},
+  {id:'dailyQuota', label:'일참여한도', req:true},
+  {id:'hintUrl', label:'랜딩URL', req:false}
+];
+
+function getColumnMeta(typeCode){
+  if(isLegacyType(typeCode)){
+    const type = LEGACY_TYPES[typeCode];
+    return COMMON_BASE.concat(type.fields.map(f=>({id:f.id, label:f.label, req:!!f.req, selectOptions: f.type==='select'? f.options: null})));
+  }
+  const tmpl = getCustomTemplate(typeCode);
+  const n = tmpl ? countBlanks(tmpl.template) : 0;
+  const cols = COMMON_BASE.concat([
+    {id:'openUrl', label:'오픈URL(플레이스/상품)', req:true},
+    {id:'keyword', label:'키워드(,구분)', req:false},
+    {id:'answer', label:'정답', req: getAnswerConfig(typeCode).mode!=='blank', isAnswer:true},
+  ]);
+  for(let i=1;i<=n;i++){ cols.push({id:'blank'+i, label:`빈칸(${i})`, req:true, blankIndex:i}); }
+  return cols;
+}
+function getColumnOrder(typeCode){ return getColumnMeta(typeCode).map(c=>c.id); }
+
+function emptyGrid(typeCode, rows){
+  const n = getColumnMeta(typeCode).length;
+  return Array.from({length: rows}, ()=> Array(n).fill(''));
+}
+function getGrid(typeCode){
+  if(!gridByType[typeCode]) gridByType[typeCode] = emptyGrid(typeCode, 10);
+  return gridByType[typeCode];
+}
+
+let activeCell = {r:0, c:0};
+const fillHandleEl = document.createElement('div');
+fillHandleEl.className = 'fillhandle';
+
+function renderGrid(){
+  const typeCode = currentType();
+  if(!typeCode) return;
+  histEnsure('bulk', typeCode);
+  const meta = getColumnMeta(typeCode);
+  const grid = getGrid(typeCode);
+  const table = document.getElementById('gridTable');
+  table.innerHTML = '';
+
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  trh.appendChild(document.createElement('th'));
+  meta.forEach(c=>{
+    const th=document.createElement('th');
+    th.innerHTML = c.label + ' <span class="badge '+(c.req?'req">필수':'opt">선택')+'</span>';
+    if(c.blankIndex){
+      const maskRow = document.createElement('div');
+      maskRow.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px;';
+      const maskSelect = document.createElement('select');
+      maskSelect.style.cssText = 'width:auto;padding:2px 4px;font-size:11px;font-weight:400;';
+      [['none','마스킹 안함'],['default','기본'],['prefix','앞 N자리'],['suffix','뒤 N자리']].forEach(([v,label])=>{
+        const op=document.createElement('option'); op.value=v; op.textContent=label; maskSelect.appendChild(op);
+      });
+      const cfg = getBlankMask(typeCode, c.blankIndex);
+      maskSelect.value = cfg.mode;
+      const nInput = document.createElement('input'); nInput.type='number'; nInput.min='1'; nInput.value=cfg.n;
+      nInput.style.cssText = 'width:40px;padding:2px 4px;font-size:11px;';
+      const needsN = (mode)=> mode==='suffix' || mode==='prefix';
+      nInput.style.display = needsN(cfg.mode) ? 'inline-block' : 'none';
+      maskSelect.addEventListener('change', ()=>{
+        nInput.style.display = needsN(maskSelect.value) ? 'inline-block' : 'none';
+        setBlankMask(typeCode, c.blankIndex, { mode: maskSelect.value });
+      });
+      nInput.addEventListener('input', ()=>{ setBlankMask(typeCode, c.blankIndex, { n: Number(nInput.value)||1 }); });
+      maskRow.appendChild(maskSelect); maskRow.appendChild(nInput);
+      th.appendChild(maskRow);
+    }
+    if(c.isAnswer){
+      const n = countBlanks((getCustomTemplate(typeCode)||{}).template||'');
+      const ansRow = document.createElement('div');
+      ansRow.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px;flex-wrap:wrap;';
+      const modeSel = document.createElement('select'); modeSel.style.cssText='width:auto;padding:2px 4px;font-size:11px;font-weight:400;';
+      [['manual','직접 입력'],['blank','빈칸 값 사용']].forEach(([v,label])=>{ const op=document.createElement('option'); op.value=v; op.textContent=label; modeSel.appendChild(op); });
+      const blankSel = document.createElement('select'); blankSel.style.cssText='width:auto;padding:2px 4px;font-size:11px;font-weight:400;';
+      for(let i=1;i<=n;i++){ const op=document.createElement('option'); op.value=i; op.textContent=`빈칸(${i})`; blankSel.appendChild(op); }
+      const extractSel = document.createElement('select'); extractSel.style.cssText='width:auto;padding:2px 4px;font-size:11px;font-weight:400;';
+      [['full','전체'],['prefix','앞N'],['suffix','뒤N']].forEach(([v,label])=>{ const op=document.createElement('option'); op.value=v; op.textContent=label; extractSel.appendChild(op); });
+      const nInput2 = document.createElement('input'); nInput2.type='number'; nInput2.min='1'; nInput2.style.cssText='width:40px;padding:2px 4px;font-size:11px;';
+
+      const acfg = getAnswerConfig(typeCode);
+      modeSel.value = n>0 ? acfg.mode : 'manual';
+      blankSel.value = acfg.blankIndex; extractSel.value = acfg.extract; nInput2.value = acfg.n;
+      const refreshAns = ()=>{
+        const isBlank = modeSel.value==='blank';
+        blankSel.style.display = isBlank ? 'inline-block' : 'none';
+        extractSel.style.display = isBlank ? 'inline-block' : 'none';
+        nInput2.style.display = (isBlank && extractSel.value!=='full') ? 'inline-block' : 'none';
+      };
+      refreshAns();
+      modeSel.addEventListener('change', ()=>{
+        if(modeSel.value==='blank' && n===0){ alert('이 타입은 빈칸이 없어서 "빈칸 값 사용"을 고를 수 없습니다.'); modeSel.value='manual'; return; }
+        setAnswerConfig(typeCode, { mode: modeSel.value }); refreshAns(); renderGrid();
+      });
+      blankSel.addEventListener('change', ()=>{ setAnswerConfig(typeCode, { blankIndex: Number(blankSel.value) }); });
+      extractSel.addEventListener('change', ()=>{ setAnswerConfig(typeCode, { extract: extractSel.value }); refreshAns(); });
+      nInput2.addEventListener('input', ()=>{ setAnswerConfig(typeCode, { n: Number(nInput2.value)||1 }); });
+      ansRow.appendChild(modeSel); ansRow.appendChild(blankSel); ansRow.appendChild(extractSel); ansRow.appendChild(nInput2);
+      th.appendChild(ansRow);
+    }
+    trh.appendChild(th);
+  });
+  trh.appendChild(document.createElement('th'));
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  grid.forEach((rowArr, r)=>{
+    const tr=document.createElement('tr');
+    const tdNum=document.createElement('td'); tdNum.className='rownum'; tdNum.textContent=(r+1);
+    tr.appendChild(tdNum);
+
+    meta.forEach((c, ci)=>{
+      const td=document.createElement('td');
+      td.dataset.r = r; td.dataset.c = ci;
+      let input;
+      if(c.selectOptions){
+        input=document.createElement('select');
+        const blank=document.createElement('option'); blank.value=''; blank.textContent='(선택)'; input.appendChild(blank);
+        c.selectOptions.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; input.appendChild(op); });
+      } else {
+        input=document.createElement('input'); input.type='text';
+        if(c.id==='hintUrl'){ input.setAttribute('list','hintUrlOptions'); }
+      }
+      input.value = rowArr[ci] || '';
+      input.addEventListener('input', ()=>{ grid[r][ci] = input.value; scheduleGridCheck(); scheduleHistCommit('bulk'); scheduleDraftSave(); });
+      input.addEventListener('change', ()=>{ grid[r][ci] = input.value; scheduleGridCheck(); scheduleHistCommit('bulk'); scheduleDraftSave(); });
+      input.addEventListener('paste', (e)=> handleGridPaste(e, r, ci));
+      input.addEventListener('focus', ()=>{ activeCell={r, c:ci}; td.appendChild(fillHandleEl); renderGridPreview(); });
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+
+    const tdDel=document.createElement('td'); tdDel.className='delcell';
+    const delBtn=document.createElement('button'); delBtn.className='btn-danger'; delBtn.textContent='삭제';
+    delBtn.onclick=()=>{ grid.splice(r,1); renderGrid(); };
+    tdDel.appendChild(delBtn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  placeHandleAtActive();
+  scheduleGridCheck();
+  scheduleHistCommit('bulk'); scheduleDraftSave(); updateUndoButtons();
+}
+
+function placeHandleAtActive(){
+  const table = document.getElementById('gridTable');
+  const td = table.querySelector(`td[data-r="${activeCell.r}"][data-c="${activeCell.c}"]`);
+  if(td) td.appendChild(fillHandleEl);
+}
+
+function handleGridPaste(e, r, c){
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if(!text) return;
+  let lines = text.replace(/\r/g,'').split('\n');
+  if(lines.length && lines[lines.length-1]==='') lines.pop();
+  const isMulti = lines.length>1 || lines[0].indexOf('\t')>=0;
+  if(!isMulti) return;
+
+  e.preventDefault();
+  const typeCode = currentType();
+  const grid = getGrid(typeCode);
+  const colCount = getColumnMeta(typeCode).length;
+  while(grid.length < r + lines.length){ grid.push(Array(colCount).fill('')); }
+
+  lines.forEach((line, li)=>{
+    const cells = line.split('\t');
+    cells.forEach((val, ci)=>{
+      const targetCol = c + ci;
+      if(targetCol < colCount){ grid[r+li][targetCol] = val; }
+    });
+  });
+  renderGrid();
+}
+
+let isFilling=false, fillSourceR=null, fillSourceC=null, fillSourceVal=null, fillTargetR=null;
+fillHandleEl.addEventListener('mousedown', (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  isFilling = true;
+  fillSourceR = activeCell.r; fillSourceC = activeCell.c;
+  fillSourceVal = getGrid(currentType())[fillSourceR][fillSourceC];
+  document.addEventListener('mousemove', onFillMouseMove);
+  document.addEventListener('mouseup', onFillMouseUp);
+});
+function onFillMouseMove(e){
+  if(!isFilling) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const td = el && el.closest ? el.closest('td[data-r]') : null;
+  if(td && Number(td.dataset.c)===fillSourceC){
+    fillTargetR = parseInt(td.dataset.r, 10);
+    document.querySelectorAll('table.grid td.selected').forEach(t=>t.classList.remove('selected'));
+    const r1=Math.min(fillSourceR,fillTargetR), r2=Math.max(fillSourceR,fillTargetR);
+    for(let rr=r1; rr<=r2; rr++){
+      const cell = document.querySelector(`table.grid td[data-r="${rr}"][data-c="${fillSourceC}"]`);
+      if(cell) cell.classList.add('selected');
+    }
+  }
+}
+function onFillMouseUp(){
+  if(!isFilling) return;
+  isFilling=false;
+  document.removeEventListener('mousemove', onFillMouseMove);
+  document.removeEventListener('mouseup', onFillMouseUp);
+  document.querySelectorAll('table.grid td.selected').forEach(t=>t.classList.remove('selected'));
+  if(fillTargetR===null || fillTargetR===fillSourceR){ fillTargetR=null; return; }
+  const grid = getGrid(currentType());
+  const r1=Math.min(fillSourceR,fillTargetR), r2=Math.max(fillSourceR,fillTargetR);
+  for(let rr=r1; rr<=r2; rr++){
+    if(rr===fillSourceR) continue;
+    if(rr<grid.length) grid[rr][fillSourceC] = fillSourceVal;
+  }
+  activeCell = {r:fillSourceR, c:fillSourceC};
+  fillTargetR = null;
+  renderGrid();
+}
+
+document.getElementById('btnAddRows').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  const grid = getGrid(typeCode);
+  const colCount = getColumnMeta(typeCode).length;
+  for(let i=0;i<10;i++) grid.push(Array(colCount).fill(''));
+  renderGrid();
+});
+
+document.getElementById('btnClearGrid').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  if(!confirm('현재 타입의 그리드 내용을 모두 지울까요?')) return;
+  gridByType[typeCode] = emptyGrid(typeCode, 10);
+  renderGrid();
+  document.getElementById('gridResult').innerHTML='';
+});
+
+document.getElementById('btnGridSubmit').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  const grid = getGrid(typeCode);
+  const cols = getColumnOrder(typeCode);
+  let ok=0; const errors=[];
+
+  grid.forEach((rowArr, i)=>{
+    if(rowArr.every(v=>!v || !String(v).trim())) return;
+    const row={};
+    cols.forEach((id, idx)=> row[id] = (rowArr[idx]||'').trim());
+    row.advertiserId = document.getElementById('globalAdvertiserId').value.trim();
+    row.rowNo = i+1;
+    const result = tryAddCampaign(typeCode, row);
+    if(result.success) ok++;
+    else errors.push(`${i+1}행: ${result.error}`);
+  });
+
+  renderList();
+  document.getElementById('jsonOut').style.display='none';
+  document.getElementById('jsonActions').style.display='none';
+
+  const resEl=document.getElementById('gridResult');
+  let html = `<div class="apiresult ${errors.length? 'err':'ok'}">✅ 성공: ${ok}건 / ❌ 실패: ${errors.length}건`;
+  if(errors.length) html += "\n\n"+errors.join("\n");
+  html += "</div>";
+  resEl.innerHTML = html;
+});
+
+// ==================== 일괄 등록 입력 검사 (다운로드 전 오류/경고 확인 + 미리보기) ====================
+const GC_URL_COLS = ['place_url','shopping_url','openUrl','hintUrl'];
+let gcTimer = null, gcShown = [], gcExpand = false;
+
+function gcEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function gcLabel(c){ return String(c.label).replace(/\(.*?\)/g,'').trim(); }
+function gcParseDate(s){
+  const m = String(s).trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T].*)?$/);
+  if(!m) return null;
+  const y=+m[1], mo=+m[2], d=+m[3];
+  const dt = new Date(Date.UTC(y, mo-1, d));
+  if(dt.getUTCFullYear()!==y || dt.getUTCMonth()!==mo-1 || dt.getUTCDate()!==d) return 'invalid';
+  return dt.getTime();
+}
+function gcNormalizeDate(s){
+  const m = String(s).trim().match(/^(\d{4})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{1,2})\s*\.?$/);
+  return m ? m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0') : null;
+}
+function gcRowObject(cols, rowArr, i){
+  const row = {};
+  cols.forEach((id, idx)=> row[id] = String(rowArr[idx]||'').trim());
+  row.advertiserId = document.getElementById('globalAdvertiserId').value.trim();
+  row.rowNo = i+1;
+  return row;
+}
+
+// 한 행 검사: 오류(error)는 필수 누락/형식 오류/말이 안 되는 값, 경고(warn)는 진행은 가능하지만 확인이 필요한 것
+function gcValidateRow(typeCode, row, meta, rowNo){
+  const out = [];
+  const g = id => String(row[id]===undefined||row[id]===null ? '' : row[id]).trim();
+  const add = (col, level, msg, fix) => out.push({row: rowNo-1, col, level, msg, fix});
+
+  meta.forEach(c=>{ if(c.req && !g(c.id)) add(c.id,'error','입력이 필요해요'); });
+
+  ['startAt','endAt'].forEach(id=>{
+    const v = g(id); if(!v) return;
+    const p = gcParseDate(v);
+    if(p==='invalid'){ add(id,'error','존재하지 않는 날짜예요'); return; }
+    if(p===null){
+      const nv = gcNormalizeDate(v);
+      if(!nv) add(id,'error','날짜 형식이 달라요 (예: 2026-10-12)');
+      else if(gcParseDate(nv)==='invalid') add(id,'error','존재하지 않는 날짜예요');
+      else add(id,'warn',`${v} → ${nv} 형식으로 맞출 수 있어요 (내려받을 때는 자동으로 맞춰져요)`,{col:id, value:nv});
+    }
+  });
+  const sd = gcParseDate(g('startAt')), ed = gcParseDate(g('endAt'));
+  if(typeof sd==='number' && typeof ed==='number' && sd>ed) add('endAt','error','종료일이 시작일보다 빨라요');
+
+  ['totalQuota','dailyQuota'].forEach(id=>{
+    const v = g(id); if(!v) return;
+    const n = parseNum(v);
+    if(isNaN(n) || !Number.isInteger(n) || n<=0) add(id,'error','1 이상의 정수로 입력해 주세요');
+  });
+  const tq = parseNum(g('totalQuota')), dq = parseNum(g('dailyQuota'));
+  if(Number.isInteger(tq) && Number.isInteger(dq) && tq>0 && dq>0 && dq>tq) add('dailyQuota','error','일 한도가 전체 한도보다 커요');
+
+  GC_URL_COLS.forEach(id=>{
+    if(!meta.some(c=>c.id===id)) return;
+    const v = g(id);
+    if(v && !/^https?:\/\/\S+$/i.test(v)) add(id,'error','URL은 https://로 시작해야 해요');
+  });
+
+  if(meta.some(c=>c.id==='keyword') && !firstKeyword(g('keyword'))){
+    const ti = makeTitle(typeCode, row, rowNo);
+    add('keyword','warn',`키워드가 비어 있어요. 캠페인명은 "${ti.title}"로 만들어져요 (${ti.source} 기준). 참여자가 복사할 검색어도 없어요.`);
+  }
+
+  if(!out.some(x=>x.level==='error')){
+    const r = buildCampaignData(typeCode, row);
+    if(!r.success) add(null,'error',r.error);
+  }
+  return out;
+}
+
+function gcValidateGrid(typeCode){
+  const meta = getColumnMeta(typeCode), cols = meta.map(c=>c.id), grid = getGrid(typeCode);
+  const labelOf = {}; meta.forEach(c=> labelOf[c.id] = gcLabel(c));
+  const issues = [], seen = {}, errRows = {};
+  let filled = 0;
+  grid.forEach((rowArr, i)=>{
+    if(rowArr.every(v=>!v || !String(v).trim())) return;
+    filled++;
+    const row = gcRowObject(cols, rowArr, i);
+    const list = gcValidateRow(typeCode, row, meta, i+1);
+    const key = JSON.stringify(cols.map(id=>String(row[id]||'').trim()));
+    if(key in seen) list.push({row:i, col: cols.indexOf('keyword')>=0 ? 'keyword' : cols[0], level:'warn', msg:`${seen[key]+1}행과 내용이 같아요`});
+    else seen[key] = i;
+    list.forEach(x=>{
+      issues.push(x);
+      if(x.level==='error' && !(i in errRows)) errRows[i] = (x.col ? (labelOf[x.col]||x.col)+': ' : '') + x.msg;
+    });
+  });
+  return {issues, filled, errRows, errorRowCount: Object.keys(errRows).length, labelOf};
+}
+
+function scheduleGridCheck(){ clearTimeout(gcTimer); gcTimer = setTimeout(runGridCheck, 200); }
+
+function runGridCheck(){
+  const panel = document.getElementById('gridCheck');
+  if(!panel) return;
+  const typeCode = currentType();
+  const bulkVisible = currentMode==='bulk';
+  if(!typeCode || !bulkVisible){ panel.style.display='none'; return; }
+
+  const res = gcValidateGrid(typeCode);
+  const meta = getColumnMeta(typeCode);
+  const idxById = {}; meta.forEach((c,ci)=> idxById[c.id] = ci);
+  const table = document.getElementById('gridTable');
+
+  table.querySelectorAll('td.cell-err,td.cell-warn').forEach(td=>td.classList.remove('cell-err','cell-warn'));
+  res.issues.forEach(x=>{
+    if(x.col===null || x.col===undefined || idxById[x.col]===undefined) return;
+    const td = table.querySelector(`td[data-r="${x.row}"][data-c="${idxById[x.col]}"]`);
+    if(!td) return;
+    if(x.level==='error'){ td.classList.remove('cell-warn'); td.classList.add('cell-err'); }
+    else if(!td.classList.contains('cell-err')) td.classList.add('cell-warn');
+  });
+
+  if(res.filled===0){ panel.style.display='none'; return; }
+  panel.style.display='block';
+
+  const e = res.issues.filter(x=>x.level==='error').length, w = res.issues.length - e;
+  let chips = '';
+  if(e) chips += `<span class="gc-chip e">오류 ${e}건</span>`;
+  if(w) chips += `<span class="gc-chip w">경고 ${w}건</span>`;
+  if(!e && !w) chips += `<span class="gc-chip ok">문제 없음</span>`;
+  if(e) chips += `<span class="hint" style="align-self:center;margin:0;">오류가 있는 행은 다운로드 파일에서 제외돼요</span>`;
+  document.getElementById('gcChips').innerHTML = chips;
+  document.getElementById('btnGcFix').style.display = res.issues.some(x=>x.fix) ? '' : 'none';
+
+  const sorted = res.issues.slice().sort((a,b)=> (a.level===b.level ? a.row-b.row : (a.level==='error'?-1:1)));
+  const LIMIT = 8;
+  gcShown = gcExpand ? sorted : sorted.slice(0, LIMIT);
+  let list = gcShown.map((x,k)=>{
+    const where = x.col ? `${x.row+1}행 ${res.labelOf[x.col]||x.col}` : `${x.row+1}행`;
+    return `<button type="button" class="gc-item ${x.level==='error'?'e':'w'}" data-k="${k}"><span class="ic">${x.level==='error'?'●':'▲'}</span><span>${gcEsc(where)}: ${gcEsc(x.msg)}</span></button>`;
+  }).join('');
+  if(sorted.length>LIMIT) list += `<button type="button" class="gc-more" id="gcMore">${gcExpand?'접기':'외 '+(sorted.length-LIMIT)+'건 모두 보기'}</button>`;
+  document.getElementById('gcList').innerHTML = list;
+  renderGridPreview();
+}
+
+function renderGridPreview(){
+  const box = document.getElementById('gcPreview');
+  const typeCode = currentType();
+  if(!box || !typeCode) return;
+  const grid = getGrid(typeCode), cols = getColumnOrder(typeCode);
+  const isEmpty = a => !a || a.every(v=>!v || !String(v).trim());
+  let r = activeCell.r;
+  if(isEmpty(grid[r])) r = grid.findIndex(a=>!isEmpty(a));
+  if(r<0){ box.innerHTML=''; return; }
+  const row = gcRowObject(cols, grid[r], r);
+  const res = buildCampaignData(typeCode, row);
+  let html = `<div class="gc-ph">미리보기 · ${r+1}행 (표의 칸을 누르면 그 행으로 바뀌어요)</div>`;
+  if(res.success){
+    const q = res.campaign.quiz[0];
+    html += `<div class="gc-lab">캠페인명</div><div class="gc-box">${gcEsc(res.campaign.title)}</div>`;
+    if(res.titleInfo && res.titleInfo.fallback) html += `<div class="gc-warn">⚠ 키워드가 없어 ${gcEsc(res.titleInfo.source)} 기준으로 만들었어요.</div>`;
+    html += `<div class="gc-lab">문제</div><div class="gc-box">${gcEsc(q.question)}</div>`;
+    html += `<div class="gc-lab">정답</div><div class="gc-box">${gcEsc(q.answer)}</div>`;
+  } else {
+    html += `<div class="gc-box" style="color:#59607a;">이 행은 아직 만들 수 없어요 — ${gcEsc(res.error)}</div>`;
+  }
+  box.innerHTML = html;
+}
+
+document.getElementById('gcList').addEventListener('click', (ev)=>{
+  if(ev.target.id==='gcMore'){ gcExpand = !gcExpand; runGridCheck(); return; }
+  const b = ev.target.closest('button[data-k]');
+  if(!b) return;
+  const x = gcShown[+b.dataset.k];
+  if(!x) return;
+  const meta = getColumnMeta(currentType());
+  let ci = x.col ? meta.findIndex(c=>c.id===x.col) : 0;
+  if(ci<0) ci = 0;
+  const el = document.querySelector(`#gridTable td[data-r="${x.row}"][data-c="${ci}"] input, #gridTable td[data-r="${x.row}"][data-c="${ci}"] select`);
+  if(el){ el.focus(); el.scrollIntoView({block:'center', behavior:'smooth'}); }
+});
+
+document.getElementById('btnGcFix').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  const res = gcValidateGrid(typeCode);
+  const meta = getColumnMeta(typeCode), grid = getGrid(typeCode);
+  res.issues.filter(x=>x.fix).forEach(x=>{
+    const ci = meta.findIndex(c=>c.id===x.fix.col);
+    if(ci>=0 && grid[x.row]) grid[x.row][ci] = x.fix.value;
+  });
+  renderGrid();
+});
+
+document.getElementById('globalAdvertiserId').addEventListener('input', scheduleGridCheck);
+
+// ==================== 일괄등록 원본양식 (기존 시스템과 동일한 20/21열 구조, 문제/정답 계산 포함) ====================
+function buildLegacyRows(typeCode){
+  const grid = getGrid(typeCode);
+  const isNSN4 = typeCode === 'NSN4';
+  const isNPM0 = typeCode === 'NPM0';
+  const cols = getColumnOrder(typeCode);
+  const check = gcValidateGrid(typeCode);
+
+  const header = [
+    '#','광고주ID','캠페인타입','캠페인명','시작일시','종료일시','전체참여인원','일최대참여인원',
+    '광고단가','광고예산','힌트랜딩URL','플레이스URL','키워드','','','','',
+    '문제','정답', isNPM0 ? '명소/출발지' : ''
+  ];
+  if(isNSN4) header.push('이미지');
+
+  const dataRows = [];
+  const errors = [];
+  let rowNum = 1;
+
+  grid.forEach((rowArr, i)=>{
+    if(rowArr.every(v=>!v || !String(v).trim())) return;
+    if(check.errRows[i] !== undefined){ errors.push(`${i+1}행: ${check.errRows[i]}`); return; }
+    const row = {};
+    cols.forEach((id, idx)=> row[id] = (rowArr[idx]||'').trim());
+    row.advertiserId = document.getElementById('globalAdvertiserId').value.trim();
+    row.rowNo = i+1;
+
+    const result = buildCampaignData(typeCode, row);
+    if(!result.success){ errors.push(`${i+1}행: ${result.error}`); return; }
+    const c = result.campaign;
+    const q = c.quiz[0];
+
+    const line = [
+      rowNum++, (c.advertiserId || ''), c.type, c.title,
+      toDateOrString(c.startAt), toDateOrString(c.endAt),
+      Number(c.totalQuota)||0, Number(c.dailyQuota)||0,
+      '', '',
+      row.hintUrl || '', c.openUrl, q.keyword.join(','),
+      '', '', '', '',
+      q.question, q.answer,
+      isNPM0 ? (row.ref_name || '') : ''
+    ];
+    if(isNSN4) line.push(row.image_url || '');
+    dataRows.push(line);
+  });
+
+  const aoa = [
+    [],
+    ['접수날짜', new Date()],
+    [],
+    header
+  ].concat(dataRows);
+
+  return { aoa, errors };
+}
+// 시간대 변환 문제(자정이 오전 9시로 밀리는 등)를 원천적으로 피하기 위해,
+// Date 객체 대신 "yyyy-mm-dd" 순수 텍스트로만 넣습니다. 시간이 섞여 들어와도 날짜 부분만 잘라냅니다.
+// 파일명용 오늘 날짜 (yyyy-mm-dd)
+function todayDateStr(){
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+// 파일명에 못 쓰는 문자(\ / : * ? " < > |)는 안전하게 치환
+function safeFileName(s){
+  return String(s||'').replace(/[\\/:*?"<>|]/g, '_').trim();
+}
+function buildExportFileName(typeCode, suffix){
+  const advertiser = safeFileName(document.getElementById('globalAdvertiserId').value.trim()) || '광고사미정';
+  return `${todayDateStr()}_${typeCode}_${advertiser}${suffix}`;
+}
+
+function toDateOrString(s){
+  if(!s) return s;
+  const str = String(s).trim();
+  const match = str.match(/^(\d{4})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})/);
+  if(match){
+    const yyyy = match[1], mm = match[2].padStart(2,'0'), dd = match[3].padStart(2,'0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return str; // 형식이 안 맞으면 원본 그대로 (엑셀에서 확인하실 수 있게)
+}
+
+// (구버전 호환용으로 남겨둠) 이제 날짜를 문자열로만 넣으므로 실제로는 아무 셀도 대상이 되지 않습니다.
+function setDateOnlyFormat(ws){
+  Object.keys(ws).forEach(addr=>{
+    if(addr[0]==='!') return; // 메타데이터(!ref 등)는 건너뜀
+    const cell = ws[addr];
+    if(cell && cell.t==='d'){ cell.z = 'yyyy-mm-dd'; }
+  });
+}
+
+document.getElementById('btnDownloadLegacyXlsx').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.'); return; }
+
+  const pre = gcValidateGrid(typeCode);
+  if(pre.errorRowCount>0){
+    const go = confirm(`오류가 있는 행 ${pre.errorRowCount}개는 파일에서 제외돼요.\n그래도 내려받을까요?\n\n(취소하면 오류 목록으로 이동합니다)`);
+    if(!go){
+      runGridCheck();
+      const gc = document.getElementById('gridCheck');
+      if(gc) gc.scrollIntoView({behavior:'smooth', block:'center'});
+      return;
+    }
+  }
+
+  const { aoa, errors } = buildLegacyRows(typeCode);
+  const resEl = document.getElementById('gridResult');
+  if(aoa.length <= 4){
+    resEl.innerHTML = `<div class="apiresult err">❌ 다운로드할 데이터가 없습니다. 그리드를 채워주세요.</div>`;
+    return;
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  setDateOnlyFormat(ws);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, typeCode);
+  XLSX.writeFile(wb, buildExportFileName(typeCode, '_일괄등록양식.xlsx'));
+
+  resEl.innerHTML = errors.length
+    ? `<div class="apiresult err">⚠️ ${aoa.length-4}건 다운로드 완료 (오류로 제외된 행 ${errors.length}건)<br>${errors.join('<br>')}</div>`
+    : `<div class="apiresult ok">✅ ${aoa.length-4}건 모두 정상적으로 다운로드되었습니다.</div>`;
+});
+
+document.getElementById('btnDownloadXlsx').addEventListener('click', ()=>{
+  const typeCode = currentType();
+  if(!typeCode) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.'); return; }
+  const meta = getColumnMeta(typeCode);
+  const grid = getGrid(typeCode);
+  const aoa = [meta.map(m=>m.label)].concat(grid);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, typeCode);
+  XLSX.writeFile(wb, `${typeCode}_원본데이터.xlsx`);
+});
+
+document.getElementById('fileUploadXlsx').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  const typeCode = currentType();
+  if(!file || !typeCode) return;
+  if(typeof XLSX === 'undefined'){ alert('엑셀 라이브러리를 불러오지 못했습니다.'); return; }
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    const data = new Uint8Array(evt.target.result);
+    const wb = XLSX.read(data, {type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+    const dataRows = rows.slice(1);
+    const colCount = getColumnMeta(typeCode).length;
+    const newGrid = dataRows.map(r=>{
+      const arr = Array(colCount).fill('');
+      for(let i=0;i<Math.min(colCount, r.length); i++){ arr[i] = (r[i]===undefined||r[i]===null) ? '' : String(r[i]); }
+      return arr;
+    });
+    while(newGrid.length < 10) newGrid.push(Array(colCount).fill(''));
+    gridByType[typeCode] = newGrid;
+    activeCell = {r:0, c:0};
+    renderGrid();
+    e.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function renderList(){
+  const wrap=document.getElementById('campaignList');
+  document.getElementById('listCount').textContent = campaigns.length;
+  if(campaigns.length===0){ wrap.innerHTML='<div class="empty">아직 추가된 캠페인이 없습니다.</div>'; return; }
+  wrap.innerHTML="";
+  campaigns.forEach((c,idx)=>{
+    const div=document.createElement('div'); div.className='list-item';
+    div.innerHTML = `<div>
+        <span class="type-pill">${c.type}</span><b>${c.code}</b>
+        <div class="meta">${c.title} · ${c.startAt} ~ ${c.endAt} · 정답: ${c.quiz[0].answer}</div>
+      </div>`;
+    const btn=document.createElement('button'); btn.className='btn-danger'; btn.textContent='삭제';
+    btn.onclick=()=>{ campaigns.splice(idx,1); renderList(); };
+    div.appendChild(btn);
+    wrap.appendChild(div);
+  });
+}
+
+function buildPayload(){ return { campaign: campaigns }; }
+
+document.getElementById('btnGenJson').addEventListener('click', ()=>{
+  if(campaigns.length===0){ alert('먼저 캠페인을 목록에 추가해주세요.'); return; }
+  const json = JSON.stringify(buildPayload(), null, 2);
+  const out=document.getElementById('jsonOut');
+  out.value=json; out.style.display='block';
+  document.getElementById('jsonActions').style.display='flex';
+});
+document.getElementById('btnCopy').addEventListener('click', ()=>{
+  const out=document.getElementById('jsonOut');
+  out.select(); document.execCommand('copy');
+  alert('JSON이 복사되었습니다.');
+});
+document.getElementById('btnDownload').addEventListener('click', ()=>{
+  const blob=new Blob([document.getElementById('jsonOut').value], {type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='registerCampaign_request.json';
+  a.click(); URL.revokeObjectURL(url);
+});
+
+// ==================== 권한 관리 (관리자 전용) ====================
+let PERM_USERS = [];
+
+async function loadPermissions(){
+  const sub = document.getElementById('permSubtitle');
+  const res_ = document.getElementById('permResult');
+  res_.innerHTML = '';
+  sub.textContent = '불러오는 중...';
+  try{
+    const key = sessionStorage.getItem('crt_key') || '';
+    const res = await fetch(`${TEMPLATE_API_URL}?action=getUsers&key=${encodeURIComponent(key)}`);
+    const data = await res.json();
+    if(!data.success){
+      const stale = /invalid action/i.test(data.error||'');
+      sub.textContent = stale ? '⚠ 등록용 서버가 구버전입니다 (등록용 Apps Script 새 버전으로 재배포 필요)' : (data.error || '불러오기 실패');
+      PERM_USERS = []; renderPermTable([]); return;
+    }
+    PERM_USERS = data.users || [];
+    sub.textContent = `사용자 ${PERM_USERS.length}명 · 서버 ${data.scriptVersion||''}`;
+    renderPermTable(PERM_USERS);
+  }catch(e){
+    sub.textContent = '불러오기 실패';
+    res_.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${e.message}</div>`;
+  }
+}
+
+function renderPermTable(users){
+  const table = document.getElementById('permTable');
+  table.innerHTML = '';
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr><th>사용자(식별키 이름)</th><th class="c">개별 등록</th><th class="c">다문제 등록</th></tr>';
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  if(users.length===0){
+    const tr = document.createElement('tr'); const td = document.createElement('td');
+    td.colSpan = 3; td.className = 'hint'; td.style.padding = '16px'; td.textContent = '표시할 사용자가 없습니다.';
+    tr.appendChild(td); tbody.appendChild(tr);
+  }
+  users.forEach(u=>{
+    const tr = document.createElement('tr');
+    const tdName = document.createElement('td');
+    tdName.textContent = u.name;
+    const meta = document.createElement('span'); meta.className = 'rowno'; meta.textContent = u.isAdmin ? '관리자 · 항상 가능' : `시트 ${u.row}행`;
+    tdName.appendChild(meta);
+    tr.appendChild(tdName);
+    [['individual', u.individual], ['multi', u.multi]].forEach(([field, val])=>{
+      const td = document.createElement('td'); td.className = 'c';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!val;
+      cb.dataset.row = u.row; cb.dataset.name = u.name; cb.dataset.field = field;
+      if(u.isAdmin){ cb.disabled = true; cb.checked = true; }
+      td.appendChild(cb); tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+}
+
+document.getElementById('btnReloadPerms').addEventListener('click', loadPermissions);
+
+document.getElementById('btnSavePerms').addEventListener('click', async ()=>{
+  const out = document.getElementById('permResult');
+  const byRow = {};
+  document.querySelectorAll('#permTable input[type=checkbox]').forEach(cb=>{
+    if(cb.disabled) return; // 관리자 행은 저장 대상 아님
+    const r = cb.dataset.row;
+    if(!byRow[r]) byRow[r] = { row: Number(r), name: cb.dataset.name, individual:false, multi:false };
+    byRow[r][cb.dataset.field] = cb.checked;
+  });
+  const items = Object.keys(byRow).map(k=>byRow[k]);
+  const btn = document.getElementById('btnSavePerms');
+  btn.disabled = true; out.innerHTML = '저장 중...';
+  try{
+    const res = await fetch(TEMPLATE_API_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ type:'savePermissions', key: sessionStorage.getItem('crt_key')||'', items })
+    });
+    const data = await res.json();
+    if(!data.success){ out.innerHTML = `<div class="apiresult err">❌ ${data.error||'저장 실패'}</div>`; return; }
+    PERM_USERS = data.users || PERM_USERS;
+    renderPermTable(PERM_USERS);
+    let html = `✅ ${data.saved}명 저장되었습니다. 변경된 권한은 해당 사용자가 다시 로그인(또는 페이지 새로고침)하면 적용됩니다.`;
+    let cls = 'ok';
+    if(data.errors && data.errors.length){ cls='err'; html += '<br>❌ ' + data.errors.join('<br>❌ '); }
+    out.innerHTML = `<div class="apiresult ${cls}">${html}</div>`;
+  }catch(e){
+    out.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${e.message}</div>`;
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+// ==================== 잔액 관리 ====================
+async function refreshBalanceOverview(){
+  const resEl = document.getElementById('balanceResult');
+  const loadingEl = document.getElementById('balanceLoading');
+  const gridEl = document.getElementById('balanceCardGrid');
+  // 응답 전이라도 바로 "불러오는 중" 상태를 보여줘서 체감 속도를 개선합니다.
+  loadingEl.style.display = 'block';
+  gridEl.style.display = 'none';
+  resEl.innerHTML = '';
+  document.getElementById('balanceSubtitle').textContent = '불러오는 중...';
+  try{
+    const viewerName = sessionStorage.getItem('crt_name') || '';
+    const res = await fetch(`${BALANCE_API_URL}?action=getBalanceOverview&viewerName=${encodeURIComponent(viewerName)}`);
+    const data = await res.json();
+    loadingEl.style.display = 'none';
+    if(!data.success){ resEl.innerHTML = `<div class="apiresult err">❌ ${data.error||'조회 실패'}</div>`; return; }
+    const overview = data.overview || [];
+    document.getElementById('balanceTitle').textContent = overview.length===1 ? `${overview[0].advertiserId} 잔액 현황` : '전체 업체 잔액 현황';
+    renderBalanceCardGrid(overview);
+    renderBalanceWarnings(data.warnings);
+    const now = new Date();
+    const z = n=>String(n).padStart(2,'0');
+    let subtitle = `갱신 ${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())} ${z(now.getHours())}:${z(now.getMinutes())}`;
+    // 관리자 계정에만: 지금 배포된 서버 코드의 버전을 보여줘서, 재배포가 됐는지 바로 확인할 수 있게 합니다.
+    const viewer = (viewerName||'').trim().toLowerCase();
+    if(CUSTOM_TYPE_MANAGER_NAMES.some(n=>n.toLowerCase()===viewer)){
+      subtitle += data.scriptVersion ? ` · 서버 ${data.scriptVersion}` : ' · ⚠ 서버가 구버전입니다 (Apps Script 새 버전으로 재배포 필요)';
+    }
+    document.getElementById('balanceSubtitle').textContent = subtitle;
+  }catch(e){
+    loadingEl.style.display = 'none';
+    resEl.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${e.message}</div>`;
+    document.getElementById('balanceSubtitle').textContent = '불러오기 실패';
+  }
+}
+
+// 관리자 전용 데이터 점검: 잔액에는 전부 포함되지만 시트에서 한 번 확인하면 좋은 항목들 (서버가 관리자에게만 내려줌)
+function renderBalanceWarnings(list){
+  const box = document.getElementById('balanceWarnings');
+  if(!box) return;
+  if(!Array.isArray(list) || !list.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const items = list.map(x=>{
+    const where = `${x.sheet} ${x.row}행 · ${x.advertiser}`;
+    let t = '';
+    if(x.kind==='undated') t = `${where}: 날짜 없이 ${fmtWon(x.amount)}이 적혀 있어요. 잔액에 포함됐어요. 합계가 아니라면 날짜를 적어두면 좋아요.`;
+    else if(x.kind==='label') t = `${where}: "${x.label}" ${fmtWon(x.amount)}. 잔액에 포함됐어요. 이전 기록이 시트에 함께 남아 있다면 이중으로 더해지니 확인해 주세요.`;
+    else if(x.kind==='totalLike') t = `${where}: ${fmtWon(x.amount)}은 다른 행의 합계와 같아서 합계 행으로 보고 잔액에서 뺐어요.`;
+    else if(x.kind==='nameOnlyIn') t = `'${x.advertiser}'은 ${x.sheet}에만 있어요. ${x.other}의 업체명과 철자가 같은지 확인해 주세요.`;
+    else return '';
+    return `<div class="bw-item">${gcEsc(t)}</div>`;
+  }).join('');
+  box.innerHTML = `<h2 style="margin-bottom:4px;">데이터 점검 ${list.length}건</h2>`
+    + `<div class="hint" style="margin:0 0 8px;">잔액은 시트에 적힌 충전 전체에서 소진 전체를 뺀 값이에요. 아래는 시트에서 한 번 확인하면 좋은 항목이에요. (관리자에게만 보여요)</div>${items}`;
+  box.style.display = 'block';
+}
+
+// 업체마다 카드 하나씩(선충전 대비 소진 진행바 + 잔액), 그리드로 나열합니다.
+function renderBalanceCardGrid(overview){
+  const gridEl = document.getElementById('balanceCardGrid');
+  gridEl.style.display = 'grid';
+  gridEl.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:16px;';
+  gridEl.innerHTML = '';
+
+  if(overview.length===0){
+    gridEl.style.display='block';
+    gridEl.innerHTML = '<div class="card hint" style="text-align:center;padding:30px;">아직 등록된 업체가 없습니다. 시트에서 충전/소진 현황을 입력해주세요.</div>';
+    return;
+  }
+
+  overview.forEach(o=>{
+    gridEl.appendChild(buildBalanceCardEl(o));
+  });
+}
+
+function buildBalanceCardEl(o){
+  const rate = o.charged>0 ? Math.min(100, o.consumed>0 ? (o.consumed/o.charged*100) : 0) : 0;
+  const rawRate = o.charged>0 ? (o.consumed/o.charged*100) : 0;
+  const barWidth = rate>0 ? Math.max(rate, 0.8) : 0; // 0~100% 선형 (50%가 막대의 정확한 중앙)
+  const overBudget = rawRate >= 100;
+  const lowBalance = !overBudget && rawRate >= 80;
+  const accentColor = overBudget ? '#d6453d' : (lowBalance ? '#f5871f' : '#6d5ef0');
+  const balanceColor = o.balance<0 ? '#c0392b' : '#1b2a4a';
+
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.style.cssText = `margin:0;border-left:4px solid ${accentColor};box-shadow:0 1px 3px rgba(20,30,60,0.06);transition:box-shadow .15s;`;
+  div.onmouseenter = ()=>{ div.style.boxShadow = '0 4px 14px rgba(20,30,60,0.10)'; };
+  div.onmouseleave = ()=>{ div.style.boxShadow = '0 1px 3px rgba(20,30,60,0.06)'; };
+
+  const lastChargeLabel = o.lastChargeDate ? `마지막 충전 ${o.lastChargeDate}` : '충전 기록 없음';
+  // 선충전 = 이월잔액(최근 입금 직전까지의 잔액) + 가장 최근 입금액. 서버가 계산해서 내려줍니다.
+  // carryOver가 없으면 지난 버전 서버(잘못된 계산)이므로 값을 쓰지 않고 재배포를 안내합니다.
+  const hasPrepaid = typeof o.prepaid === 'number' && typeof o.carryOver === 'number';
+  const prepaidText = hasPrepaid ? fmtWon(o.prepaid) : '-';
+  const prepaidHint = !hasPrepaid ? '서버 재배포 필요' : (o.lastChargeAmount > 0 ? `입금 직전 잔액 ${fmtWon(o.carryOver)} + 최근 입금 ${fmtWon(o.lastChargeAmount)}` : '입금 기록 없음');
+  // 일평균 기준일 안내: 어느 날까지의 며칠을 평균 냈는지 (서버가 구버전이면 표시 생략)
+  const avgHint = o.avgBasisDate ? `~${o.avgBasisDate.slice(5).replace('-','/')} · ${o.avgDays}일 평균` : (o.avgDays===0 ? '소진 기록 없음' : '');
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div>
+        <div class="preview-label" style="margin-bottom:2px;">업체명</div>
+        <div style="font-size:17px;font-weight:800;">${o.advertiserId}</div>
+      </div>
+      <div class="hint" style="font-size:11px;white-space:nowrap;background:#f3f4f7;padding:3px 8px;border-radius:12px;">${lastChargeLabel}</div>
+    </div>
+
+    <div class="hint" style="margin-bottom:2px;">잔액 <span style="color:#a3a9b8;">(누적금액 − 소진액)</span></div>
+    <div style="font-size:26px;font-weight:800;color:${balanceColor};margin-bottom:18px;letter-spacing:-0.3px;">${fmtWon(o.balance)}<span style="font-size:11px;font-weight:400;color:#b9bec9;margin-left:6px;letter-spacing:0;">(VAT 별도)</span></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+      <div class="hint">누적금액 대비 소진</div>
+      <div style="font-size:12.5px;font-weight:700;color:${accentColor};">${rawRate.toFixed(1)}%</div>
+    </div>
+    <div style="position:relative;height:8px;border-radius:4px;background:#eef0f4;overflow:hidden;">
+      <div style="height:100%;width:${barWidth}%;background:linear-gradient(90deg, ${accentColor}cc, ${accentColor});border-radius:4px;transition:width .3s;"></div>
+      <div style="position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:rgba(27,42,74,0.35);"></div>
+    </div>
+    <div style="position:relative;height:14px;margin:4px 0 14px;font-size:10.5px;color:var(--muted);">
+      <span style="position:absolute;left:0;">0%</span>
+      <span style="position:absolute;left:50%;transform:translateX(-50%);">50%</span>
+      <span style="position:absolute;right:0;">100%</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 12px;padding-top:14px;border-top:1px solid var(--line);">
+      <div>
+        <div class="hint" style="margin-bottom:2px;">선충전</div>
+        <div style="font-size:13.5px;font-weight:700;">${prepaidText}</div>
+        <div class="hint" style="font-size:10.5px;margin-top:1px;">${prepaidHint}</div>
+      </div>
+      <div>
+        <div class="hint" style="margin-bottom:2px;">누적금액</div>
+        <div style="font-size:13.5px;font-weight:700;">${fmtWon(o.charged)}</div>
+        <div class="hint" style="font-size:10.5px;margin-top:1px;">입금 전체 합계</div>
+      </div>
+      <div>
+        <div class="hint" style="margin-bottom:2px;">소진액</div>
+        <div style="font-size:13.5px;font-weight:700;">${o.consumed.toLocaleString()}</div>
+      </div>
+      <div>
+        <div class="hint" style="margin-bottom:2px;">일평균(7일)</div>
+        <div style="font-size:13.5px;font-weight:700;">${Math.round(o.avgDaily7||0).toLocaleString()}</div>
+        <div class="hint" style="font-size:10.5px;margin-top:1px;">${avgHint}</div>
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+document.getElementById('btnRefreshBalance').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btnRefreshBalance');
+  btn.disabled = true; btn.textContent = '🔄 새로고침 중...';
+  await refreshBalanceOverview();
+  btn.disabled = false; btn.textContent = '🔄 새로고침';
+});
+
+// ==================== 자동 임시저장 + 되돌리기 ====================
+const DRAFT_VERSION = 1, DRAFT_TTL_MS = 14*24*3600*1000, HIST_LIMIT = 50;
+let draftPending = false, draftTimer = null;
+const hist = {bulk:{}, multi:{}};
+const histTimers = {};
+const pad2 = n => String(n).padStart(2,'0');
+
+function showToast(msg){
+  const t = document.getElementById('toast'); if(!t) return;
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(showToast._t); showToast._t = setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+// ---- 임시저장 (이 브라우저 안에만 저장되고, 로그인한 이름별로 따로 보관됩니다) ----
+function draftKey(){ const n = (sessionStorage.getItem('crt_name')||'').trim(); return n ? 'crt_draft_v1:'+n : null; }
+function gridHasData(g){ return Array.isArray(g) && g.some(r=>Array.isArray(r) && r.some(v=>v && String(v).trim())); }
+function countFilledRows(g){ return (g||[]).filter(r=>Array.isArray(r) && r.some(v=>v && String(v).trim())).length; }
+function collectDraft(){
+  const bulk = {}, multi = {};
+  Object.keys(gridByType).forEach(t=>{ if(gridHasData(gridByType[t])) bulk[t] = gridByType[t]; });
+  Object.keys(multiGridByType).forEach(t=>{
+    if(gridHasData(multiGridByType[t])) multi[t] = {grid: multiGridByType[t], qCount: getMultiQuestionCount(t), startType: getMultiStartType(t)};
+  });
+  return {v: DRAFT_VERSION, savedAt: new Date().toISOString(),
+    advertiserId: document.getElementById('globalAdvertiserId').value.trim(),
+    type: currentType() || '', mode: currentMode, bulk, multi,
+    blankMask: blankMaskConfig, answerCfg: answerConfig};
+}
+function draftIsEmpty(d){ return !Object.keys(d.bulk||{}).length && !Object.keys(d.multi||{}).length; }
+function setDraftStatus(txt){
+  ['draftStatusBulk','draftStatusMulti'].forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent = txt; });
+}
+function saveDraftNow(){
+  clearTimeout(draftTimer);
+  if(draftPending) return;              // 복원할지 아직 고르지 않았다면 기존 임시저장을 덮어쓰지 않습니다
+  const key = draftKey(); if(!key) return;
+  const d = collectDraft();
+  try{
+    if(draftIsEmpty(d)){ localStorage.removeItem(key); setDraftStatus(''); return; }
+    localStorage.setItem(key, JSON.stringify(d));
+    const t = new Date(); setDraftStatus('임시저장됨 · '+pad2(t.getHours())+':'+pad2(t.getMinutes()));
+  }catch(e){ setDraftStatus('임시저장을 쓸 수 없어요 (브라우저 저장공간 설정 확인)'); }
+}
+function scheduleDraftSave(){ if(draftPending) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraftNow, 800); }
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveDraftNow(); });
+window.addEventListener('pagehide', saveDraftNow);
+document.getElementById('globalAdvertiserId').addEventListener('input', scheduleDraftSave);
+
+function loadDraft(){
+  const key = draftKey(); if(!key) return null;
+  try{
+    const raw = localStorage.getItem(key); if(!raw) return null;
+    const d = JSON.parse(raw);
+    if(!d || d.v!==DRAFT_VERSION || !d.bulk || !d.multi || (Date.now()-new Date(d.savedAt).getTime())>DRAFT_TTL_MS || draftIsEmpty(d)){ localStorage.removeItem(key); return null; }
+    return d;
+  }catch(e){ return null; }
+}
+function updateDraftBanner(){
+  const b = document.getElementById('draftBanner'); if(!b) return;
+  b.style.display = (draftPending && ['individual','bulk','multi'].indexOf(currentMode)>=0) ? 'flex' : 'none';
+}
+function checkPendingDraft(){
+  const d = loadDraft();
+  if(!d){ draftPending = false; updateDraftBanner(); return; }
+  const parts = [];
+  Object.keys(d.bulk).forEach(t=> parts.push(`일괄 ${t} ${countFilledRows(d.bulk[t])}행`));
+  Object.keys(d.multi).forEach(t=> parts.push(`다문제 ${t} ${countFilledRows(d.multi[t].grid)}행`));
+  const s = new Date(d.savedAt);
+  document.getElementById('draftBannerSub').textContent = `${pad2(s.getMonth()+1)}/${pad2(s.getDate())} ${pad2(s.getHours())}:${pad2(s.getMinutes())} 저장 · ${parts.join(', ')}`;
+  draftPending = true; updateDraftBanner();
+}
+function restoreDraft(){
+  const d = loadDraft();
+  if(!d){ draftPending = false; updateDraftBanner(); return; }
+  Object.keys(d.bulk).forEach(t=>{ gridByType[t] = d.bulk[t]; });
+  Object.keys(d.multi).forEach(t=>{
+    const m = d.multi[t]; multiGridByType[t] = m.grid;
+    if(m.qCount) multiQuestionCount[t] = m.qCount;
+    if(m.startType) multiStartType[t] = m.startType;
+  });
+  Object.keys(d.blankMask||{}).forEach(k=>{ blankMaskConfig[k] = d.blankMask[k]; });
+  Object.keys(d.answerCfg||{}).forEach(k=>{ answerConfig[k] = d.answerCfg[k]; });
+  if(d.advertiserId) document.getElementById('globalAdvertiserId').value = d.advertiserId;
+  draftPending = false;
+  hist.bulk = {}; hist.multi = {};
+  const sel = document.getElementById('typeSelect');
+  if(d.type && Array.prototype.some.call(sel.options, o=>o.value===d.type)){ sel.value = d.type; onTypeChange(); }
+  const hasMulti = Object.keys(d.multi).length>0, hasBulk = Object.keys(d.bulk).length>0;
+  let target = currentMode;
+  if(d.mode==='multi' && hasMulti && canUse('multi')) target = 'multi';
+  else if(hasBulk) target = 'bulk';
+  else if(hasMulti && canUse('multi')) target = 'multi';
+  setMode(target);
+  updateDraftBanner();
+  saveDraftNow();
+  showToast('임시저장한 작업을 불러왔어요');
+}
+function discardDraft(){
+  const key = draftKey(); try{ if(key) localStorage.removeItem(key); }catch(e){}
+  draftPending = false; updateDraftBanner(); setDraftStatus('');
+}
+document.getElementById('btnDraftRestore').addEventListener('click', restoreDraft);
+document.getElementById('btnDraftDiscard').addEventListener('click', ()=>{ if(confirm('임시저장된 작업을 버릴까요? 되돌릴 수 없어요.')) discardDraft(); });
+
+function resetWorkState(){
+  clearTimeout(draftTimer);
+  Object.keys(histTimers).forEach(k=>clearTimeout(histTimers[k]));
+  [gridByType, multiGridByType, multiQuestionCount, multiStartType, blankMaskConfig, answerConfig].forEach(o=>{ Object.keys(o).forEach(k=>{ delete o[k]; }); });
+  hist.bulk = {}; hist.multi = {};
+  campaigns.length = 0;
+  document.getElementById('globalAdvertiserId').value = '';
+  draftPending = false; updateDraftBanner(); setDraftStatus('');
+}
+
+// ---- 되돌리기 / 다시 실행 (표의 입력, 붙여넣기, 채우기, 행 추가·삭제, 그리드 초기화를 단계별로 되돌립니다) ----
+function histSt(kind, type){ const h = hist[kind]; return h[type] || (h[type] = {undo:[], redo:[], last:null}); }
+function histSnap(kind, type){
+  return kind==='bulk' ? JSON.stringify(getGrid(type))
+    : JSON.stringify({g: getMultiGrid(type), q: getMultiQuestionCount(type), s: getMultiStartType(type)});
+}
+function histEnsure(kind, type){ const st = histSt(kind, type); if(st.last===null) st.last = histSnap(kind, type); }
+function scheduleHistCommit(kind){
+  const type = currentType(); if(!type) return;
+  if(kind==='multi' && !MULTI_TYPES[type]) return;
+  clearTimeout(histTimers[kind]);
+  histTimers[kind] = setTimeout(()=>histCommit(kind, type), 500);   // 타이핑은 한 덩어리로 묶어서 기록
+}
+function histCommit(kind, type){
+  clearTimeout(histTimers[kind]);
+  const st = histSt(kind, type), now = histSnap(kind, type);
+  if(st.last===null){ st.last = now; return; }
+  if(now===st.last) return;
+  st.undo.push(st.last); if(st.undo.length>HIST_LIMIT) st.undo.shift();
+  st.redo.length = 0; st.last = now;
+  updateUndoButtons();
+}
+function histApply(kind, type, json){
+  if(kind==='bulk'){
+    gridByType[type] = JSON.parse(json); renderGrid();
+    focusGridCell('gridTable', activeCell);
+  } else {
+    const s = JSON.parse(json);
+    multiGridByType[type] = s.g; multiQuestionCount[type] = s.q; multiStartType[type] = s.s;
+    refreshMultiMode();
+    focusGridCell('multiGridTable', multiActiveCell);
+  }
+}
+function focusGridCell(tableId, cell){
+  const el = document.querySelector(`#${tableId} td[data-r="${cell.r}"][data-c="${cell.c}"] input, #${tableId} td[data-r="${cell.r}"][data-c="${cell.c}"] select`);
+  if(el) el.focus({preventScroll:true});
+}
+function histUndo(kind){
+  const type = currentType(); if(!type) return false;
+  histCommit(kind, type);                       // 방금 타이핑한 내용도 한 단계로 확정한 뒤 되돌립니다
+  const st = histSt(kind, type);
+  if(!st.undo.length){ showToast('더 되돌릴 내용이 없어요'); return false; }
+  st.redo.push(st.last);
+  st.last = st.undo.pop();
+  histApply(kind, type, st.last); updateUndoButtons();
+  return true;
+}
+function histRedo(kind){
+  const type = currentType(); if(!type) return false;
+  histCommit(kind, type);
+  const st = histSt(kind, type);
+  if(!st.redo.length){ showToast('다시 실행할 내용이 없어요'); return false; }
+  st.undo.push(st.last);
+  st.last = st.redo.pop();
+  histApply(kind, type, st.last); updateUndoButtons();
+  return true;
+}
+function updateUndoButtons(){
+  const type = currentType();
+  [['bulk','btnUndo','btnRedo'],['multi','btnMultiUndo','btnMultiRedo']].forEach(([kind,u,r])=>{
+    const bu = document.getElementById(u), br = document.getElementById(r);
+    if(!bu || !br) return;
+    const st = (type && hist[kind][type]) ? hist[kind][type] : {undo:[], redo:[]};
+    const pending = histTimers[kind] ? true : false;
+    bu.disabled = !(st.undo.length || pending); br.disabled = !st.redo.length;
+  });
+}
+document.getElementById('btnUndo').addEventListener('click', ()=>histUndo('bulk'));
+document.getElementById('btnRedo').addEventListener('click', ()=>histRedo('bulk'));
+document.getElementById('btnMultiUndo').addEventListener('click', ()=>histUndo('multi'));
+document.getElementById('btnMultiRedo').addEventListener('click', ()=>histRedo('multi'));
+
+// Ctrl+Z / Cmd+Z, Ctrl+Shift+Z / Ctrl+Y : 표 안에서만 동작 (가이드 문구 같은 다른 입력칸은 브라우저 기본 동작 유지)
+// 한글 자판에서도 되도록 글자(e.key)가 아니라 물리 키(e.code)로 판단합니다.
+document.addEventListener('keydown', (e)=>{
+  if(!(e.ctrlKey || e.metaKey)) return;
+  const isUndo = e.code==='KeyZ' && !e.shiftKey;
+  const isRedo = (e.code==='KeyZ' && e.shiftKey) || e.code==='KeyY';
+  if(!isUndo && !isRedo) return;
+  const t = e.target; let kind = null;
+  if(t && t.closest){ if(t.closest('#gridTable')) kind = 'bulk'; else if(t.closest('#multiGridTable')) kind = 'multi'; }
+  if(!kind){
+    // 표 밖이라도 입력칸/안내 창이 아닌 곳(예: 방금 누른 [행 10개 추가] 버튼)에 포커스가 있으면 현재 화면의 표를 되돌립니다
+    const editable = t && t.closest && t.closest('input,textarea,select,[contenteditable="true"]');
+    const modalOpen = ['helpModal','balanceAlertModal'].some(id=>{ const m = document.getElementById(id); return m && m.style.display!=='none'; });
+    if(!editable && !modalOpen){ if(currentMode==='bulk') kind = 'bulk'; else if(currentMode==='multi') kind = 'multi'; }
+  }
+  if(!kind) return;
+  e.preventDefault();
+  if(isUndo) histUndo(kind); else histRedo(kind);
+});
+
+// ==================== 로그인 잔액 알림 ====================
+const BALANCE_ALERT_CAUTION_DAYS = 5;   // 예상 소진까지 5일 이하 → 주의
+const BALANCE_ALERT_URGENT_DAYS = 3;    // 3일 이하 → 긴급
+function balanceAlertLevel(o){
+  if(!o || ((o.charged||0)<=0 && (o.consumed||0)<=0)) return null;       // 입금/소진 기록이 전혀 없으면 알림 없음
+  const b = Number(o.balance)||0, a = Number(o.avgDaily7)||0;
+  if(b<=0) return {lv:'short', days:0};
+  if(a<=0) return null;                                                    // 최근 소진이 없으면 알림 없음
+  const days = b/a;
+  if(days<=BALANCE_ALERT_URGENT_DAYS) return {lv:'urgent', days};
+  if(days<=BALANCE_ALERT_CAUTION_DAYS) return {lv:'caution', days};
+  return null;
+}
+function showWhenFree(fn){
+  const help = document.getElementById('helpModal');
+  if(help && help.style.display!=='none') window.__pendingAfterHelp = fn;   // 일괄 등록 안내 창이 떠 있으면 닫힌 뒤에 보여줍니다
+  else fn();
+}
+async function checkBalanceAlert(){
+  try{
+    if(sessionStorage.getItem('crt_balance_alert_shown')==='1') return;
+    if(typeof BALANCE_API_URL!=='string' || BALANCE_API_URL.indexOf('http')!==0) return;
+    const viewer = sessionStorage.getItem('crt_name') || '';
+    const res = await fetch(`${BALANCE_API_URL}?action=getBalanceOverview&viewerName=${encodeURIComponent(viewer)}`);
+    const data = await res.json();
+    if(!data || !data.success) return;
+    if((sessionStorage.getItem('crt_name')||'') !== viewer) return;        // 그 사이 로그아웃했거나 다른 계정으로 바뀜
+    const list = (data.overview||[]).map(o=>({o, a: balanceAlertLevel(o)})).filter(x=>x.a);
+    if(!list.length) return;
+    sessionStorage.setItem('crt_balance_alert_shown','1');
+    showWhenFree(()=> renderBalanceAlert(list));
+  }catch(e){ console.warn('잔액 알림 확인 실패', e); }
+}
+function daysText(d){ return d<1 ? '오늘 안에' : '약 '+Math.max(1,Math.floor(d))+'일 안에'; }
+function renderBalanceAlert(list){
+  const body = document.getElementById('baBody');
+  const rank = {short:0, urgent:1, caution:2};
+  list.sort((x,y)=> (rank[x.a.lv]-rank[y.a.lv]) || (x.a.days-y.a.days));
+  const isAdmin = !!USER_PERMS.isAdmin;
+  if(!isAdmin || list.length===1){
+    const x = list[0], o = x.o, lv = x.a.lv, avg = fmtWon(o.avgDaily7||0);
+    let title, text;
+    if(lv==='caution'){ title = '충전 시점이 다가오고 있어요'; text = `최근 7일 평균(${avg}/일)으로는 ${daysText(x.a.days).replace('안에','후')} 소진될 수 있어요. 여유 있게 충전해 주세요.`; }
+    else if(lv==='urgent'){ title = '곧 소진될 수 있어요'; text = `최근 7일 평균(${avg}/일)으로는 ${daysText(x.a.days)} 소진될 수 있어요. 지금 충전이 필요해요.`; }
+    else if(Number(o.balance)<0){ title = '잔액이 부족해요'; text = '잔액이 마이너스예요. 충전이 필요해요.'; }
+    else { title = '잔액이 모두 소진됐어요'; text = '충전이 필요해요.'; }
+    const cls = lv==='caution' ? 'w' : 'e';
+    body.innerHTML = `<div class="ba-head"><div class="ba-ic ${cls}">!</div><div class="ba-title" id="baTitle">${gcEsc(title)}</div></div>`
+      + (isAdmin ? `<div class="ba-lab">${gcEsc(o.advertiserId)} 잔액</div>` : `<div class="ba-lab">잔액</div>`)
+      + `<div class="ba-amt">${fmtWon(o.balance)} <small>(VAT 별도)</small></div><div class="ba-body">${gcEsc(text)}</div>`;
+  } else {
+    const rows = list.slice(0,6).map(x=>{
+      const o=x.o, cls = x.a.lv==='caution' ? 'w' : 'e';
+      const tag = x.a.lv==='short' ? '잔액 부족' : (x.a.days<1 ? '오늘 안에 소진' : '약 '+Math.max(1,Math.floor(x.a.days))+'일 후 소진');
+      return `<div class="ba-row"><span class="nm">${gcEsc(o.advertiserId)}</span><span class="am">${fmtWon(o.balance)}</span><span class="ba-tag ${cls}">${gcEsc(tag)}</span></div>`;
+    }).join('');
+    const more = list.length>6 ? `<div class="hint" style="margin-top:6px;">외 ${list.length-6}곳은 잔액 관리에서 확인해 주세요.</div>` : '';
+    body.innerHTML = `<div class="ba-head"><div class="ba-ic e">!</div><div class="ba-title" id="baTitle">충전이 필요한 업체가 ${list.length}곳 있어요</div></div>${rows}${more}`;
+  }
+  document.getElementById('balanceAlertModal').style.display = 'flex';
+  document.getElementById('btnBaGo').focus();
+}
+function closeBalanceAlert(){ document.getElementById('balanceAlertModal').style.display = 'none'; }
+document.getElementById('btnBaClose').addEventListener('click', closeBalanceAlert);
+document.getElementById('btnBaGo').addEventListener('click', ()=>{ closeBalanceAlert(); setMode('balance'); });
+document.getElementById('balanceAlertModal').addEventListener('click', (e)=>{ if(e.target.id==='balanceAlertModal') closeBalanceAlert(); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && document.getElementById('balanceAlertModal').style.display!=='none') closeBalanceAlert(); });
+
+async function initAll(){
+  await loadGuides();
+  await loadTemplates(); // loadTemplates 내부에서 renderTypeSelect -> onTypeChange가 호출되어 가이드도 함께 표시됨
+}
+
+// ==================== 로그인/로그아웃 ====================
+// 로그인한 사용자의 화면 사용 권한. (서버가 식별키 시트 C/D열과 관리자 여부로 판정해서 내려줍니다)
+let USER_PERMS = {individual:false, multi:false, isAdmin:false};
+function canUse(mode){
+  if(mode==='individual') return !!(USER_PERMS.isAdmin || USER_PERMS.individual);
+  if(mode==='multi') return !!(USER_PERMS.isAdmin || USER_PERMS.multi);
+  if(mode==='permissions') return !!USER_PERMS.isAdmin;
+  return true; // 일괄 등록, 잔액 관리는 모든 로그인 사용자
+}
+function defaultModeForUser(){ return canUse('individual') ? 'individual' : 'bulk'; }
+function applyPermissions(){
+  const show = (id, ok, disp)=>{ const el=document.getElementById(id); if(el) el.style.display = ok ? (disp||'') : 'none'; };
+  show('modeIndividual', canUse('individual'));
+  show('modeMulti', canUse('multi'));
+  show('navAdminCaption', canUse('permissions'), 'block');
+  show('modePermissions', canUse('permissions'));
+}
+
+async function tryLogin(){
+  const key = document.getElementById('lockKey').value.trim();
+  const errEl = document.getElementById('lockErr');
+  if(!key){ errEl.textContent = '키를 입력해주세요.'; return; }
+  errEl.textContent = '확인 중...';
+  try{
+    const res = await fetch(`${TEMPLATE_API_URL}?action=login&key=${encodeURIComponent(key)}`);
+    const data = await res.json();
+    if(!data.success){ errEl.textContent = data.error || '유효하지 않은 키입니다.'; return; }
+    sessionStorage.setItem('crt_key', key);
+    sessionStorage.setItem('crt_name', data.name || '');
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'block';
+    document.getElementById('welcomeMsg').textContent = data.name ? `어서오세요 ${data.name}님!` : '';
+    applyUserProfile(data.name||'');
+    // 권한 반영: 이름이 관리자 목록에 있으면 항상 전체 허용(서버가 구버전이어도 관리자는 막히지 않게)
+    const nameLower = (data.name||'').trim().toLowerCase();
+    const adminByName = CUSTOM_TYPE_MANAGER_NAMES.some(x=>x.toLowerCase()===nameLower);
+    USER_PERMS = {
+      isAdmin: !!data.isAdmin || adminByName,
+      individual: !!(data.perms && data.perms.individual),
+      multi: !!(data.perms && data.perms.multi)
+    };
+    applyPermissions();
+    setMode(defaultModeForUser());
+    await initAll();
+    applyCustomTypeAccess();
+    if(!window.__autoLogin) sessionStorage.removeItem('crt_balance_alert_shown');
+    checkPendingDraft();
+    checkBalanceAlert();
+  }catch(e){
+    errEl.textContent = '로그인 서버 호출 실패: ' + e.message;
+  }
+}
+document.getElementById('lockBtn').addEventListener('click', tryLogin);
+document.getElementById('lockKey').addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryLogin(); });
+
+// "내 커스텀 타입 관리"는 이 목록에 있는 이름으로 로그인했을 때만 사용할 수 있습니다.
+// 식별키 시트의 B열(이름)에 적힌 값과 비교합니다 (대소문자 무관).
+const CUSTOM_TYPE_MANAGER_NAMES = ['jamong', '자몽랩'];
+function applyCustomTypeAccess(){
+  const name = (sessionStorage.getItem('crt_name') || '').trim().toLowerCase();
+  const allowed = CUSTOM_TYPE_MANAGER_NAMES.some(n => n.toLowerCase() === name);
+  document.getElementById('customTypeManagerCard').style.display = allowed ? 'block' : 'none';
+}
+
+function applyUserProfile(name){
+  const n = (name||'').trim();
+  const av = document.getElementById('userAvatar'), nm = document.getElementById('userNameLabel'), rl = document.getElementById('userRoleLabel');
+  if(av) av.textContent = n ? n.charAt(0).toUpperCase() : 'U';
+  if(nm) nm.textContent = n || '사용자';
+  const isAdmin = CUSTOM_TYPE_MANAGER_NAMES.some(x=>x.toLowerCase()===n.toLowerCase());
+  if(rl) rl.textContent = isAdmin ? '관리자' : '사용자';
+}
+
+function logout(){
+  saveDraftNow();      // 작업 중이던 내용은 임시저장해두고
+  resetWorkState();    // 화면(메모리)에 남은 작업 내용은 지워서 다음 로그인 사용자에게 보이지 않게 합니다
+  sessionStorage.removeItem('crt_balance_alert_shown');
+  window.__pendingAfterHelp = null;
+  document.getElementById('balanceAlertModal').style.display = 'none';   // 열려 있던 알림/안내 창도 닫습니다
+  document.getElementById('helpModal').style.display = 'none';
+  USER_PERMS = {individual:false, multi:false, isAdmin:false};
+  applyPermissions();
+  sessionStorage.removeItem('crt_key');
+  sessionStorage.removeItem('crt_name');
+  document.getElementById('appRoot').style.display = 'none';
+  document.getElementById('lockScreen').style.display = 'flex';
+  document.getElementById('lockKey').value = '';
+  document.getElementById('lockErr').textContent = '';
+}
+document.getElementById('btnLogout').addEventListener('click', logout);
+
+// 같은 브라우저 탭에서 새로고침해도(sessionStorage 유지) 다시 로그인 안 해도 되게 자동 재시도
+(async function autoLoginFromSession(){
+  const saved = sessionStorage.getItem('crt_key');
+  if(!saved) return;
+  document.getElementById('lockKey').value = saved;
+  window.__autoLogin = true;
+  try{ await tryLogin(); } finally { window.__autoLogin = false; }
+})();
+
+document.getElementById('btnRefreshAll').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btnRefreshAll');
+  const keepType = currentType();
+  btn.disabled = true; btn.textContent = '🔄 새로고침 중...';
+  try{
+    await loadGuides();
+    await loadTemplates(); // 내부에서 renderTypeSelect -> onTypeChange 호출 (선택값 리셋될 수 있음)
+    if(keepType){
+      const sel = document.getElementById('typeSelect');
+      const stillExists = Array.from(sel.children).some(o=>o.value===keepType);
+      if(stillExists){ sel.value = keepType; onTypeChange(); }
+    }
+  }catch(e){
+    alert('새로고침 실패: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔄 새로고침';
+  }
+});
+</script>
+</body>
+</html>
