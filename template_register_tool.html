@@ -146,6 +146,29 @@
   .bw-item{font-size:12.5px;line-height:1.6;padding:7px 0;border-bottom:1px solid #f0f2f6;color:#2f3647;}
   .bw-item:last-child{border-bottom:none;}
 
+  /* ---- 정답 줄이기 설정 ---- */
+  .as-check{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;}
+  .as-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 20px;margin-top:16px;}
+  .as-grid .wide{grid-column:1 / -1;}
+  .as-examples{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .as-examples button{font:inherit;font-size:12px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 11px;cursor:pointer;}
+  .as-examples button:hover{color:var(--brand-ink);border-color:var(--brand);}
+  .as-diff{font-size:20px;font-weight:500;line-height:1.55;margin-top:16px;word-break:keep-all;overflow-wrap:anywhere;}
+  .as-diff .k{font-weight:700;}
+  .as-diff del{color:#c2372f;background:#fdecea;text-decoration:line-through;text-decoration-thickness:2px;font-weight:500;border-radius:3px;padding:0 1px;}
+  .as-answer{font-size:34px;font-weight:800;color:var(--brand-ink);line-height:1.25;word-break:keep-all;overflow-wrap:anywhere;}
+  .as-lab{font-size:12px;font-weight:600;color:var(--muted);margin-top:10px;}
+  .as-notes{list-style:none;margin:10px 0 0;padding:0;font-size:13px;}
+  .as-notes li{display:flex;gap:10px;align-items:baseline;padding:3px 0;}
+  .as-tag{flex:0 0 auto;font-size:11.5px;font-weight:600;color:var(--brand-ink);background:var(--brand-soft);border-radius:6px;padding:1px 8px;min-width:60px;text-align:center;}
+  .as-warn{background:#fff4dc;color:#8a5208;border-radius:8px;padding:7px 11px;margin-top:8px;font-size:13px;}
+  .as-hint{color:#3f51b5;font-size:12.5px;margin-top:8px;}
+  .as-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;}
+  .as-table th{text-align:left;font-size:11.5px;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);}
+  .as-table td{padding:7px 8px;border-bottom:1px solid #f0f2f6;vertical-align:top;}
+  .as-table td.a{font-weight:700;color:var(--brand-ink);}
+  @media (max-width:640px){ .as-grid{grid-template-columns:1fr;} }
+
   /* ---- 일괄 등록 입력 검사 ---- */
   .gridcheck{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:#fcfcfe;}
   .gc-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -166,6 +189,7 @@
   .gc-preview .gc-lab{font-size:11.5px;font-weight:700;color:#59607a;margin:8px 0 3px;}
   .gc-preview .gc-box{white-space:pre-wrap;background:#f8f9fc;border:1px solid var(--line);border-radius:8px;padding:9px 11px;line-height:1.55;}
   .gc-preview .gc-warn{margin-top:4px;color:#b45309;font-size:12px;}
+  .gc-preview .gc-note{margin-top:4px;color:#3f51b5;font-size:12px;}
   table.grid tbody tr:nth-child(n) td.cell-err input,table.grid tbody tr:nth-child(n) td.cell-err select{background:#fdecea;box-shadow:inset 0 0 0 1.5px #e57368;}
   table.grid tbody tr:nth-child(n) td.cell-warn input,table.grid tbody tr:nth-child(n) td.cell-warn select{background:#fff6e0;box-shadow:inset 0 0 0 1.5px #f0b24b;}
 
@@ -230,6 +254,7 @@
 
     <div class="nav-caption" id="navAdminCaption" style="display:none;">관리</div>
     <div class="sidenav-item" id="modePermissions" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>권한 관리</span></div>
+    <div class="sidenav-item" id="modeAnswerSettings" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg><span>정답 줄이기 설정</span></div>
   </aside>
 
   <div class="app-main">
@@ -259,6 +284,11 @@
         <select id="typeSelect"></select>
       </div>
       <div id="typeInfoBox" class="hint" style="flex:1;min-width:220px;align-self:center;">-</div>
+    </div>
+    <div id="answerShortenBox" style="display:none;margin-top:12px;font-size:13px;line-height:1.7;">
+      <b>정답 자동 줄이기</b> <span class="gc-chip ok" id="shortenState">켜짐</span>
+      <span class="hint" style="display:inline;margin:0;">플레이스명에서 지점·업종 꼬리·영문·숫자·인식이 어려운 글자를 뺀 정답으로 만들어요. 힌트(마스킹)는 전체 이름 그대로예요. 직접 정하려면 "정답(직접입력)" 칸을 채우세요.</span>
+      <a href="#" id="linkAnswerSettings" style="display:none;margin-left:6px;font-size:12px;">설정 열기</a>
     </div>
     <div id="templatePreviewWrap" style="margin-top:14px;display:none;">
       <div class="preview-label">선택된 타입의 원본 템플릿</div>
@@ -536,6 +566,7 @@
         <div class="preview" id="prevQuestion">-</div>
         <div class="preview-label">정답</div>
         <div class="preview" id="prevAnswer">-</div>
+        <div class="hint" id="prevAnswerNote" style="display:none;color:#3f51b5;"></div>
       </div>
 
       <div class="card" style="display:none;">
@@ -574,6 +605,73 @@
   <div id="balanceWarnings" class="card" style="display:none;margin-top:16px;"></div>
 
   <div id="balanceResult"></div>
+</div>
+
+<!-- 정답 줄이기 설정 (관리자 전용) -->
+<div id="answerSettingsMode" style="display:none;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h2 style="margin:0;font-size:20px;">정답 줄이기 설정</h2>
+        <div class="hint" style="margin-top:4px;">NPD0 정답을 OCR이 읽기 쉽게 줄일 때 쓰는 기준이에요. 저장하면 모든 사용자에게 적용돼요.</div>
+        <div class="hint" id="asMeta" style="margin-top:2px;"></div>
+      </div>
+      <button class="btn btn-outline" id="btnAsReload">🔄 서버에서 다시 불러오기</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="as-check"><input type="checkbox" id="asAuto"> <b>정답 자동 줄이기</b> <span class="hint" style="margin:0;">끄면 정답에 플레이스명 전체를 써요.</span></label>
+    <div class="as-grid">
+      <div class="field wide">
+        <label for="asHard">인식이 어려운 글자 <span class="hint" style="margin:0;">정답에서 이 글자를 빼요. 공백으로 나눠도, 붙여서 써도 돼요.</span></label>
+        <input type="text" id="asHard" spellcheck="false" placeholder="예: 확 돼 케 킬 클">
+        <div class="hint" id="asHardCount"></div>
+      </div>
+      <div class="field">
+        <label for="asMaxLen">지점을 남기는 기준 (공백 뺀 글자 수)</label>
+        <input type="number" id="asMaxLen" min="3" max="20" step="1">
+        <div class="hint">지점까지 합쳐서 이 글자 수 이하면 지점을 남기고, 넘으면 뺍니다. 정답이 이보다 길면 "더 줄일지 확인" 경고가 떠요.</div>
+      </div>
+      <div class="field">
+        <label for="asMinLen">정답 최소 글자 수</label>
+        <input type="number" id="asMinLen" min="1" max="5" step="1">
+        <div class="hint">줄인 결과가 이보다 짧으면 줄이지 않고 원래 이름을 써요. (1자만 아니면 되면 2)</div>
+      </div>
+      <div class="field">
+        <label for="asCapLen">정답 최대 글자 수 (공백 뺀, 넘으면 안 됨)</label>
+        <input type="number" id="asCapLen" min="3" max="20" step="1">
+        <div class="hint">줄인 결과가 이 글자 수를 넘으면 뒤쪽 단어부터 빼고, 한 단어가 길면 앞에서 이 글자 수만 남겨요.</div>
+      </div>
+      <div class="field wide"><label class="as-check"><input type="checkbox" id="asAlnum"> 영문·숫자는 모두 뺀다</label></div>
+      <div class="field wide">
+        <label for="asRegions">지점을 줄일 때 앞에서 빼는 지역 이름 <span class="hint" style="margin:0;">쉼표로 구분</span></label>
+        <textarea id="asRegions" spellcheck="false" style="min-height:64px;"></textarea>
+      </div>
+      <div class="field wide">
+        <label for="asTails">끝에 붙으면 빼는 업종·메뉴 단어 <span class="hint" style="margin:0;">쉼표로 구분</span></label>
+        <textarea id="asTails" spellcheck="false" style="min-height:84px;"></textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btnAsSave">💾 설정 저장</button>
+      <button class="btn btn-outline" id="btnAsReset">기본값으로 되돌리기</button>
+    </div>
+    <div id="asResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>입력해서 시험해보기</h2>
+    <div class="hint" style="margin:-6px 0 10px;">위 입력칸의 값(저장 전)으로 계산해요. 저장하기 전에 결과를 확인해보세요.</div>
+    <input type="text" id="asTestName" spellcheck="false" placeholder="예: 재클린디저트 모슬포점" style="font-size:16px;">
+    <div class="as-examples" id="asExamples"></div>
+    <div id="asTestOut"></div>
+    <div class="field" style="margin-top:16px;">
+      <label for="asBatch">여러 개를 한 번에 <span class="hint" style="margin:0;">한 줄에 하나씩</span></label>
+      <textarea id="asBatch" spellcheck="false" style="min-height:96px;" placeholder="재클린디저트 모슬포점&#10;서울루다치과&#10;카페 Moon 제주"></textarea>
+    </div>
+    <div id="asBatchOut"></div>
+  </div>
 </div>
 
 <!-- 권한 관리 (관리자 전용) -->
@@ -681,6 +779,286 @@ function parseNum(s){
 function firstKeyword(k){ if(!k) return ""; return String(k).split(',')[0].trim(); }
 function autoTitle(k){ const kw=firstKeyword(k); return kw? ("[정답입력]"+kw) : "[정답입력]"; }
 
+// ==================== NPD0 정답 자동 줄이기 (OCR 인식률용) ====================
+// 정답은 "화면 글자에 포함되어 있는지"로 판정되므로, 인식이 잘 안 되는 부분을 빼고 짧게 만듭니다.
+// 기준값은 관리자가 "정답 줄이기 설정" 탭에서 바꿀 수 있고(서버의 "정답설정" 시트에 저장되어 모든 사용자에게 적용),
+// 아래 값은 서버에서 설정을 못 받았을 때 쓰는 기본값입니다.
+const ANSWER_DEFAULTS = {
+  autoShorten: true, maxLen: 7, minLen: 2, capLen: 8, stripAlnum: true,
+  hard: '확 돼 케 킬 클 헬 활 혈 필 풀 펄 썸 껌 땀 뿜 빰 뺨 끌 껄 낄 꿀 딸 떨 뚜 띠 따 또 때',
+  regions: '서귀포, 제주시, 제주, 서울, 부산, 대구, 인천, 광주, 대전, 울산, 세종, 경기, 강원, 충북, 충남, 전북, 전남, 경북, 경남',
+  tails: '치과의원, 한의원, 이비인후과, 산부인과, 정형외과, 피부과, 소아과, 치과, 의원, 병원, 약국, 내과, 안과, 미용실, 음식점, 식당, 횟집, 칼국수, 국밥, 갈치조림, 조림, 전문점, 하우스'
+};
+let ANSWER_SETTINGS = Object.assign({}, ANSWER_DEFAULTS);
+let ANSWER_META = {updatedAt:'', updatedBy:'', stale:false, loaded:false};
+
+function answerListOf(v){ return String(v||'').split(/[,\n]/).map(t=>t.trim()).filter(Boolean); }
+function answerCfgOf(s){
+  s = s || ANSWER_SETTINGS;
+  return {
+    maxLen: s.maxLen, minLen: s.minLen, capLen: s.capLen || ANSWER_DEFAULTS.capLen, stripAlnum: !!s.stripAlnum,
+    hardSet: new Set([...String(s.hard||'')].filter(c=>/[가-힣]/.test(c))),
+    tails: answerListOf(s.tails), regions: answerListOf(s.regions)
+  };
+}
+// 서버/입력칸에서 온 설정을 검증 (서버의 normalizeAnswerSettings_ 와 같은 기준)
+function normalizeAnswerSettings(raw){
+  const o = {}, r = raw || {};
+  const has = k => Object.prototype.hasOwnProperty.call(r,k) && r[k]!=='' && r[k]!==null && r[k]!==undefined;
+  const bool = v => v===true || /^(true|1|y|o|공개)$/i.test(String(v).trim());
+  const int = (v,min,max)=>{ const n = parseInt(v,10); return isNaN(n) ? null : Math.min(max, Math.max(min,n)); };
+  const list = v => [...new Set(answerListOf(v).filter(t=>[...t].length<=12))].slice(0,100).join(', ');
+  if(has('autoShorten')) o.autoShorten = bool(r.autoShorten);
+  if(has('stripAlnum')) o.stripAlnum = bool(r.stripAlnum);
+  if(has('maxLen')){ const n = int(r.maxLen,3,20); if(n!==null) o.maxLen = n; }
+  if(has('minLen')){ const n = int(r.minLen,1,5); if(n!==null) o.minLen = n; }
+  if(has('capLen')){ const n = int(r.capLen,3,20); if(n!==null) o.capLen = n; }
+  if(Object.prototype.hasOwnProperty.call(r,'hard')) o.hard = [...new Set([...String(r.hard===null||r.hard===undefined?'':r.hard)].filter(c=>/[가-힣]/.test(c)))].slice(0,300).join(' ');
+  if(has('tails')) o.tails = list(r.tails);
+  if(has('regions')) o.regions = list(r.regions);
+  return o;
+}
+
+// 업체명 → 줄인 정답. 반환: {original, answer, notes:[[태그,설명]], warns, hints, cands, picked}
+function shortenPlaceAnswerDetail(name, cfg){
+  const len = s => [...String(s).replace(/\s+/g,'')].length;
+  const isHard = c => cfg.hardSet.has(c);
+  const hasHard = s => [...s].some(isHard);
+  const hardList = s => [...new Set([...s].filter(isHard))];
+  const orig = String(name||'').replace(/\s+/g,' ').trim();
+  const notes = [], warns = [], hints = [];
+  if(!orig) return null;
+
+  // 정답은 cfg.capLen자(공백 제외)를 넘으면 안 됨: 뒤쪽 단어부터 빼고, 한 단어가 길면 앞에서 capLen글자만 남김 (어려운 글자 앞에서 끊을 수 있으면 거기서 끊음)
+  const capAnswer = ans => {
+    if(len(ans) <= cfg.capLen) return ans;
+    const words = ans.split(' ');
+    while(words.length>1 && len(words.join(' ')) > cfg.capLen) words.pop();
+    let t = words.join(' ');
+    if(len(t) < cfg.minLen) t = ans;
+    if(len(t) > cfg.capLen){
+      let out = '', n = 0;
+      for(const c of [...t]){ if(c===' '){ out += c; continue; } if(n>=cfg.capLen) break; out += c; n++; }
+      t = out.trim();
+    }
+    const chars = [...t], hi = chars.findIndex(isHard);
+    if(hi>0){ const pre = chars.slice(0,hi).join('').trim(); if(len(pre)>=cfg.minLen) t = pre; }
+    return t;
+  };
+
+  let work = orig.replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
+  if(!work) work = orig; else if(work!==orig) notes.push(['괄호','괄호 안 내용을 뺐어요']);
+
+  let base = work, branch = '';
+  const bm = work.match(/\s+(\S*[가-힣A-Za-z0-9]점)$/);
+  if(bm){ base = work.slice(0,bm.index).trim(); branch = bm[1]; }
+
+  const ALNUM_G = /[A-Za-z0-9Ａ-Ｚａ-ｚ０-９]+/g, ALNUM_1 = /[A-Za-z0-9Ａ-Ｚａ-ｚ０-９]/;
+  if(cfg.stripAlnum){
+    const removed = [];
+    let branchNote = '';
+    if(ALNUM_1.test(base)){
+      (base.match(ALNUM_G)||[]).forEach(m=>removed.push(m));
+      base = base.split(/\s+/).map(w=>{
+        if(!ALNUM_1.test(w)) return w;
+        const c = w.replace(ALNUM_G,'').replace(/^[^가-힣]+|[^가-힣]+$/g,'');
+        return [...c].length>=2 ? c : '';          // "24시"처럼 영문·숫자를 빼고 한 글자만 남으면 그 단어도 뺌
+      }).filter(w=>/[가-힣]/.test(w)).join(' ');
+    }
+    if(branch && ALNUM_1.test(branch)){
+      // 지점 이름에서 영문·숫자와 "호점"만 정리하고 지역 이름은 남김 (제주2호점 → 제주, 2호점 → 없음, 제주DT점 → 제주점)
+      (branch.match(ALNUM_G)||[]).forEach(m=>removed.push(m));
+      const before = branch;
+      let b = branch.replace(ALNUM_G,'').replace(/^[^가-힣]+|[^가-힣]+$/g,'').replace(/호점$/,'');
+      if([...b].length<2 || /^(본|직영|지)?점$/.test(b)) b = '';
+      branch = b;
+      branchNote = `지점 표기를 정리했어요 (${before} → ${b || '없음'})`;
+    }
+    if(removed.length) notes.push(['영문·숫자', `영문·숫자를 뺐어요 (${removed.join(', ')})`]);
+    if(branchNote) notes.push(['지점', branchNote]);
+    if(removed.length && len(base) < cfg.minLen){
+      if(branch && len(branch) >= cfg.minLen){
+        notes.push(['지점','이름이 영문·숫자뿐이라 지점 이름을 정답으로 썼어요']);
+        base = branch; branch = '';
+      } else {
+        const capd = capAnswer(orig);
+      return {original:orig, answer:capd, notes: capd!==orig ? [['길이', `${len(orig)}자라서 ${cfg.capLen}자 이내로 줄였어요 (뒤쪽을 뺐어요)`]] : [], warns:['영문·숫자를 빼면 남는 글자가 없어서 원래 이름을 그대로 둬요'], hints:[], cands:[], picked:null};
+      }
+    }
+  }
+
+  const keepBranch = !!branch && (len(base)+len(branch) <= cfg.maxLen || len(base) < cfg.minLen);
+  if(branch) notes.push(['지점', keepBranch ? '지점을 남겼어요 (이름이 짧아요)' : '지점을 뺐어요 (이름이 길어요)']);
+
+  const tails = cfg.tails.slice().sort((a,b)=>b.length-a.length);
+  function stripTails(s){
+    const removed = []; let again = true;
+    while(again){
+      again = false;
+      for(const t of tails){
+        if(s.endsWith(t) && s.length>t.length){
+          const rest = s.slice(0,-t.length).trim();
+          if(len(rest)>=cfg.minLen){ removed.push(t); s = rest; again = true; break; }
+        }
+      }
+    }
+    return {s, removed: removed.reverse()};
+  }
+  function candidates(text){
+    const ch = [...text], out = [];
+    let st = 0, best = null;
+    for(let i=0;i<=ch.length;i++){
+      if(i===ch.length || isHard(ch[i])){
+        const t = ch.slice(st,i).join('').trim();
+        if(t && (!best || len(t)>len(best))) best = t;
+        st = i+1;
+      }
+    }
+    if(best) out.push({kind:'A', text:best});
+    const tokens = text.split(' ');
+    const b = tokens.filter(w=>!hasHard(w)).join(' ').trim();
+    if(b) out.push({kind:'B', text:b});
+    let ts = tokens.map(w=>{
+      const a = [...w], i = a.findIndex(isHard);
+      if(i<0) return w;
+      return i===0 ? a.slice(2).join('') : a.slice(0,i).join('');
+    }).filter(Boolean);
+    if(ts.length>1) ts = ts.filter(w=>[...w].length>=2);
+    const c = ts.join(' ').trim();
+    if(c) out.push({kind:'C', text:c});
+    return out;
+  }
+  // 지점 줄이기: 끝의 "점"을 빼고, 앞의 지역 이름(제주·서울 등)을 빼서 핵심만 남김 (제주아라점 → 아라, 모슬포점 → 모슬포, 제주점 → 제주)
+  function shortBranch(b){
+    let s = b.replace(/(호점|본점|직영점|지점|점)$/,'');
+    if([...s].length < 2) return b;
+    const regs = cfg.regions.slice().sort((x,y)=>y.length-x.length);
+    for(const rg of regs){ if(s.startsWith(rg) && [...s.slice(rg.length)].length >= 2){ s = s.slice(rg.length); break; } }
+    return s;
+  }
+  const assemble = b => keepBranch ? (b+' '+branch).trim() : b;
+  function finish(b){
+    let cur = assemble(b); const extra = []; let cs = [], pk = null, frontCut = false;
+    const startChar = [...cur.trim()][0];
+    if(hasHard(cur)){
+      const orig1 = new Set(cur.split(' '));
+      cs = candidates(cur).filter(c=>len(c.text)>=cfg.minLen && !hasHard(c.text));
+      if(cs.length){
+        const frag = c => c.text.split(' ').filter(w=>[...w].length===1 && !orig1.has(w)).length;
+        const within = cs.filter(c=>len(c.text)<=cfg.maxLen);
+        const pool = (within.length ? within : cs).slice();
+        const rank = {A:0, C:1, B:2};
+        pool.sort((x,y)=> (frag(x)-frag(y)) || (within.length ? len(y.text)-len(x.text) : len(x.text)-len(y.text)) || (rank[x.kind]-rank[y.kind]));
+        pk = pool[0];
+        extra.push(['글자', `인식이 어려운 글자(${hardList(cur).join('·')})를 뺐어요`]);
+        cur = pk.text;
+        frontCut = [...cur.trim()][0] !== startChar;
+      }
+    }
+    return {cur, ok: !hasHard(cur), extra, cs, pk, frontCut};
+  }
+
+  const t1 = stripTails(base);
+  let r = finish(t1.s), removedTails = t1.removed;
+  if(removedTails.length){
+    // 꼬리를 빼서 어려운 글자 처리가 안 되거나, 어려운 글자를 빼고 나니 3자 미만으로 너무 짧아지면 꼬리를 남긴 채 다시 시도
+    const r2 = finish(base);
+    const tooShort = r.pk && len(r.cur) < 3 && r2.ok && len(r2.cur) > len(r.cur);
+    if((!r.ok && r2.ok) || tooShort){ r = r2; removedTails = []; }
+  }
+  if(removedTails.length) notes.push(['꼬리', `끝의 업종·메뉴 단어를 뺐어요 (${removedTails.join('·')})`]);
+  r.extra.forEach(x=>notes.push(x));
+  // 어려운 글자 때문에 앞쪽을 잘라냈는데 지점을 안 남긴 상태라면, 뒤에 지점이라도 붙여서 다른 장소와 구분되게 함 (끝에 지점이 오므로 화면 글자와 이어진 구간이 되기도 함)
+  if(r.pk && r.frontCut && branch && !keepBranch){
+    if(hasHard(branch)) notes.push(['지점','지점에도 어려운 글자가 있어서 붙이지 않았어요']);
+    else {
+      for(let i=notes.length-1;i>=0;i--){ if(notes[i][0]==='지점' && /지점을 뺐어요 \(이름이 길어요\)/.test(notes[i][1])) notes.splice(i,1); }
+      let attach = branch, how = '';
+      if(len(r.cur)+len(branch) > cfg.maxLen){      // 붙였을 때 8자 이상이면 "~점"과 지역 이름을 빼고 핵심만 붙임
+        attach = shortBranch(branch);
+        how = attach!==branch ? ` — ${branch} → ${attach}, 8자 이상이라 줄였어요` : '';
+      }
+      if(hasHard(attach)) notes.push(['지점','지점에도 어려운 글자가 있어서 붙이지 않았어요']);
+      else { r.cur = (r.cur+' '+attach).trim(); notes.push(['지점', `앞쪽 글자를 빼서 짧아졌으니 뒤에 지점을 붙였어요 (${attach})${how}`]); }
+    }
+  }
+
+  let answer = r.cur.trim(), cands = r.cs, picked = r.pk;
+  if(len(answer) < cfg.minLen){ answer = orig; notes.length = 0; cands = []; picked = null; warns.push('너무 짧아져서 원래 이름을 그대로 둬요'); }
+  if(len(answer) > cfg.capLen){
+    const before = len(answer);
+    answer = capAnswer(answer);
+    notes.push(['길이', `${before}자라서 ${cfg.capLen}자 이내로 줄였어요 (뒤쪽을 뺐어요)`]);
+  }
+  if(hasHard(answer)) warns.push(`인식이 어려운 글자(${hardList(answer).join('·')})가 남았어요`);
+  if(len(answer) <= 2) hints.push(`${len(answer)}자라서 짧아요. 다른 장소 화면도 통과할 수 있어요`);
+  if(!orig.includes(answer) && answer!==orig) hints.push('화면 글자와 이어지지 않는 정답이에요. 정답을 단어별로 확인하는 판정에서만 통과해요');
+  return {original:orig, answer, notes, warns, hints, cands, picked};
+}
+
+// 원래 이름에서 남은 글자(굵게)와 뺀 글자(취소선)를 나눠서 보여줌
+function answerDiffHtml(orig, answer){
+  const oc = [...orig], ac = [...answer].filter(c=>c!==' ');
+  let j = 0; const marks = [];
+  for(const c of oc){
+    if(c===' '){ marks.push({c, k:null}); continue; }
+    if(j<ac.length && c===ac[j]){ marks.push({c, k:true}); j++; } else marks.push({c, k:false});
+  }
+  if(j!==ac.length) return `<span class="k">${gcEsc(orig)}</span>`;
+  let html = '', cur = null, buf = '';
+  const flush = () => { if(!buf) return; html += cur===false ? `<del>${gcEsc(buf)}</del>` : `<span class="k">${gcEsc(buf)}</span>`; buf = ''; };
+  for(const m of marks){
+    if(m.k===null){ buf += m.c; continue; }
+    if(cur!==null && m.k!==cur){ flush(); }
+    cur = m.k; buf += m.c;
+  }
+  flush();
+  return html;
+}
+
+
+// 도구 안에서 쓰는 형태: {answer, changed, notes:[글], warns:[글], hints:[글], detail}
+function shortenPlaceAnswer(name, cfg){
+  const d = shortenPlaceAnswerDetail(name, cfg || answerCfgOf());
+  if(!d) return {answer:'', changed:false, notes:[], warns:[], hints:[], detail:null};
+  return {answer: d.answer, changed: d.answer!==d.original, notes: d.notes.map(x=>x[1]), warns: d.warns, hints: d.hints, detail: d};
+}
+
+// NPD0 정답 결정: 직접입력 > 자동 줄임 > 플레이스명 전체
+function npd0Answer(v){
+  const place = String(v.place_name||'').trim(), manual = String(v.answer_override||'').trim();
+  if(manual){
+    const n = [...manual.replace(/\s+/g,'')].length, cap = ANSWER_SETTINGS.capLen || ANSWER_DEFAULTS.capLen;
+    return {original:place, answer:manual, changed: manual!==place, manual:true, notes:['직접 입력한 정답을 사용'], warns: n>cap ? [`직접 입력한 정답이 ${n}자예요 (최대 ${cap}자)`] : [], hints:[]};
+  }
+  if(!ANSWER_SETTINGS.autoShorten) return {original:place, answer:place, changed:false, manual:false, notes:[], warns:[], hints:[]};
+  return Object.assign({original:place, manual:false}, shortenPlaceAnswer(place));
+}
+
+// 서버의 정답설정 시트에서 기준값을 받아옵니다 (못 받으면 위의 기본값을 그대로 씁니다)
+async function loadAnswerSettings(){
+  try{
+    const key = sessionStorage.getItem('crt_key') || '';
+    const res = await Promise.race([
+      fetch(`${TEMPLATE_API_URL}?action=getAnswerSettings&key=${encodeURIComponent(key)}`),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('시간 초과')), 6000))
+    ]);
+    const data = await res.json();
+    if(data && data.success){
+      ANSWER_SETTINGS = Object.assign({}, ANSWER_DEFAULTS, normalizeAnswerSettings(data.settings||{}));
+      ANSWER_META = {updatedAt: data.updatedAt||'', updatedBy: data.updatedBy||'', stale:false, loaded:true};
+    } else {
+      ANSWER_META = Object.assign({}, ANSWER_META, {stale: /invalid action/i.test((data&&data.error)||''), loaded:true});
+    }
+  }catch(e){ ANSWER_META = Object.assign({}, ANSWER_META, {loaded:true}); }
+  afterAnswerSettingsChanged();
+}
+function afterAnswerSettingsChanged(){
+  if(typeof updateShortenBox==='function') updateShortenBox();
+  if(currentMode==='bulk') renderGrid(); else if(currentMode==='individual') updatePreview();
+  scheduleGridCheck();
+}
+
 // 캠페인명 만들기 (항상 "[정답입력]" 뒤에 이름이 붙습니다. "[정답입력]"만 남지 않게 합니다)
 //  1) 첫 번째 키워드  2) 키워드가 없으면 타입별 대체 이름 (플레이스 타입=플레이스명, NSN4(쇼핑)=스토어명→상품명,
 //  커스텀 타입=타입명_광고주ID_행번호)  3) 그것도 없으면 광고주ID_타입_행번호
@@ -720,10 +1098,12 @@ const LEGACY_TYPES = {
       {id:"keyword", label:"키워드(,구분)", req:false, ph:"대정읍 당근케익,모슬포 디저트 카페"},
       {id:"place_url", label:"플레이스URL", req:true, ph:"https://m.place.naver.com/restaurant/xxxx"},
       {id:"rank", label:"플레이스순위", req:false, ph:"1"},
-      {id:"place_name", label:"플레이스명", req:true, ph:"재클린디저트 모슬포점"}
+      {id:"place_name", label:"플레이스명", req:true, ph:"재클린디저트 모슬포점"},
+      {id:"answer_override", label:"정답(직접입력)", req:false, ph:"비우면 자동으로 줄여서 사용"}
     ],
     build(v, guideText){
       const place = (v.place_name||"").trim();
+      const ai = npd0Answer(v);          // 정답: 직접입력 > 자동 줄임 > 플레이스명 전체 (힌트는 항상 전체 이름 기준)
       const question =
 `${guideText}
 
@@ -735,7 +1115,7 @@ const LEGACY_TYPES = {
 플레이스명: ${maskText(place)}
 
 *네이버 지도앱 설치 필수*`;
-      return {question, answer: place, title: autoTitle(v.keyword)};
+      return {question, answer: ai.answer, answerInfo: ai, title: autoTitle(v.keyword)};
     }
   },
   NPN0: {
@@ -1099,7 +1479,18 @@ let currentMode = 'individual';
 
 function currentType(){ return document.getElementById('typeSelect').value; }
 
+function updateShortenBox(){
+  const box = document.getElementById('answerShortenBox'); if(!box) return;
+  box.style.display = currentType()==='NPD0' ? 'block' : 'none';
+  const st = document.getElementById('shortenState');
+  st.textContent = ANSWER_SETTINGS.autoShorten ? '켜짐' : '꺼짐';
+  st.className = 'gc-chip ' + (ANSWER_SETTINGS.autoShorten ? 'ok' : 'w');
+  document.getElementById('linkAnswerSettings').style.display = (USER_PERMS && USER_PERMS.isAdmin) ? 'inline' : 'none';
+}
+document.getElementById('linkAnswerSettings').addEventListener('click', (e)=>{ e.preventDefault(); setMode('answerSettings'); });
+
 function onTypeChange(){
+  updateShortenBox();
   const code = currentType();
   const legacy = isLegacyType(code);
   document.getElementById('legacyFieldsCard').style.display = legacy ? 'block' : 'none';
@@ -1388,6 +1779,7 @@ function updatePreview(){
       showPrevTitle(code, v);
       document.getElementById('prevQuestion').textContent = built.question;
       document.getElementById('prevAnswer').textContent = built.answer;
+      showPrevAnswerNote(built.answerInfo);
 
       // <문제>/<힌트> 자동생성 영역만 따로 보여주기 (가이드 문구를 빈 값으로 넣어서 계산)
       const fixedEl = document.getElementById('fixedPartPreview');
@@ -1420,6 +1812,15 @@ function updatePreview(){
 }
 
 // 개별 등록 미리보기의 캠페인명 표시 (키워드가 없어서 대체 이름을 썼으면 경고 문구도 보여줌)
+function showPrevAnswerNote(ai){
+  const n = document.getElementById('prevAnswerNote'); if(!n) return;
+  let t = '';
+  if(ai && ai.manual) t = '직접 입력한 정답을 사용해요.';
+  else if(ai && ai.changed) t = `정답을 줄였어요: ${ai.original} → ${ai.answer} (${ai.notes.join(' · ')})`;
+  if(ai && ai.warns && ai.warns.length) t += (t?'  ':'') + '⚠ ' + ai.warns.join(' / ');
+  n.textContent = t; n.style.display = t ? 'block' : 'none';
+}
+
 function showPrevTitle(code, row){
   const note0 = document.getElementById('prevTitleNote');
   const hasInput = Object.keys(row).some(k=> String(row[k]===undefined||row[k]===null ? '' : row[k]).trim());
@@ -1488,7 +1889,7 @@ function buildCampaignData(typeCode, row){
   if(imageUrl){ campaign.imageUrl = imageUrl; }
   if(row.advertiserId){ campaign.advertiserId = row.advertiserId; }
 
-  return {success:true, campaign, titleInfo};
+  return {success:true, campaign, titleInfo, answerInfo: (built && built.answerInfo) || null};
 }
 
 function tryAddCampaign(typeCode, row){
@@ -1540,6 +1941,7 @@ document.getElementById('modeBulk').addEventListener('click', ()=> setMode('bulk
 document.getElementById('modeMulti').addEventListener('click', ()=> setMode('multi'));
 document.getElementById('modeBalance').addEventListener('click', ()=> setMode('balance'));
 document.getElementById('modePermissions').addEventListener('click', ()=> setMode('permissions'));
+document.getElementById('modeAnswerSettings').addEventListener('click', ()=> setMode('answerSettings'));
 // "일괄 등록 방법" 안내 창: 일괄 등록 옆 ? 버튼으로 언제든 열 수 있고, 이 브라우저에서 처음 일괄 등록에 들어올 때만 자동으로 한 번 열립니다.
 function openHelp(){
   const m = document.getElementById('helpModal'); m.style.display = 'flex';
@@ -1568,13 +1970,15 @@ function setMode(mode){
   if(!canUse(mode)) mode = defaultModeForUser();
   currentMode = mode;
   const bc = document.getElementById('breadcrumbCurrent');
-  if(bc) bc.textContent = ({individual:'개별 등록', bulk:'일괄 등록', multi:'다문제 등록', balance:'잔액 관리', permissions:'권한 관리'})[mode] || '';
+  if(bc) bc.textContent = ({individual:'개별 등록', bulk:'일괄 등록', multi:'다문제 등록', balance:'잔액 관리', permissions:'권한 관리', answerSettings:'정답 줄이기 설정'})[mode] || '';
   const hb = document.getElementById('btnBulkHelp');
   if(hb) hb.style.display = mode==='bulk' ? 'inline-flex' : 'none';
   const rb = document.getElementById('btnRefreshAll');
-  if(rb) rb.style.display = (mode==='balance' || mode==='permissions') ? 'none' : '';
+  if(rb) rb.style.display = (mode==='balance' || mode==='permissions' || mode==='answerSettings') ? 'none' : '';
   document.getElementById('modePermissions').classList.toggle('active', mode==='permissions');
   document.getElementById('permissionsMode').style.display = mode==='permissions' ? 'block':'none';
+  document.getElementById('modeAnswerSettings').classList.toggle('active', mode==='answerSettings');
+  document.getElementById('answerSettingsMode').style.display = mode==='answerSettings' ? 'block':'none';
   document.getElementById('modeIndividual').classList.toggle('active', mode==='individual');
   document.getElementById('modeBulk').classList.toggle('active', mode==='bulk');
   document.getElementById('modeMulti').classList.toggle('active', mode==='multi');
@@ -1583,7 +1987,7 @@ function setMode(mode){
   document.getElementById('bulkMode').style.display = mode==='bulk' ? 'block':'none';
   document.getElementById('multiMode').style.display = mode==='multi' ? 'block':'none';
   document.getElementById('previewCard').style.display = mode==='individual' ? 'block':'none';
-  const regHidden = (mode==='balance' || mode==='permissions');
+  const regHidden = (mode==='balance' || mode==='permissions' || mode==='answerSettings');
   document.getElementById('registrationCommonCards').style.display = regHidden ? 'none':'block';
   document.getElementById('registrationLayout').style.display = regHidden ? 'none':'grid';
   document.getElementById('balanceMode').style.display = mode==='balance' ? 'block':'none';
@@ -1594,6 +1998,7 @@ function setMode(mode){
   if(mode==='multi'){ refreshMultiMode(); }
   if(mode==='balance'){ refreshBalanceOverview(); }
   if(mode==='permissions'){ loadPermissions(); }
+  if(mode==='answerSettings'){ openAnswerSettings(); }
   updateDraftBanner(); updateUndoButtons();
 }
 
@@ -2542,6 +2947,11 @@ function gcValidateRow(typeCode, row, meta, rowNo){
     add('keyword','warn',`키워드가 비어 있어요. 캠페인명은 "${ti.title}"로 만들어져요 (${ti.source} 기준). 참여자가 복사할 검색어도 없어요.`);
   }
 
+  if(typeCode==='NPD0' && g('place_name')){
+    const ai = npd0Answer(row);
+    if(ai.warns.length) add(ai.manual ? 'answer_override' : 'place_name','warn',(ai.manual ? '' : '정답: ')+ai.warns.join(' / '));
+  }
+
   if(!out.some(x=>x.level==='error')){
     const r = buildCampaignData(typeCode, row);
     if(!r.success) add(null,'error',r.error);
@@ -2635,6 +3045,9 @@ function renderGridPreview(){
     if(res.titleInfo && res.titleInfo.fallback) html += `<div class="gc-warn">⚠ 키워드가 없어 ${gcEsc(res.titleInfo.source)} 기준으로 만들었어요.</div>`;
     html += `<div class="gc-lab">문제</div><div class="gc-box">${gcEsc(q.question)}</div>`;
     html += `<div class="gc-lab">정답</div><div class="gc-box">${gcEsc(q.answer)}</div>`;
+    const ai = res.answerInfo;
+    if(ai && ai.manual) html += `<div class="gc-note">직접 입력한 정답을 사용해요.</div>`;
+    else if(ai && ai.changed) html += `<div class="gc-note">정답을 줄였어요: ${gcEsc(ai.original)} → ${gcEsc(ai.answer)} (${gcEsc(ai.notes.join(' · '))})</div>`;
   } else {
     html += `<div class="gc-box" style="color:#59607a;">이 행은 아직 만들 수 없어요 — ${gcEsc(res.error)}</div>`;
   }
@@ -3395,6 +3808,111 @@ document.getElementById('btnBaGo').addEventListener('click', ()=>{ closeBalanceA
 document.getElementById('balanceAlertModal').addEventListener('click', (e)=>{ if(e.target.id==='balanceAlertModal') closeBalanceAlert(); });
 document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && document.getElementById('balanceAlertModal').style.display!=='none') closeBalanceAlert(); });
 
+// ==================== 정답 줄이기 설정 (관리자 전용) ====================
+const AS_EXAMPLES = ['재클린디저트 모슬포점','서울루다치과','제주 돼지국수','투썸플레이스 제주아라점','BHC치킨 제주2호점','GS25 제주점','확 트인 뷰 한림점'];
+function asReadForm(){
+  return {
+    autoShorten: document.getElementById('asAuto').checked, hard: document.getElementById('asHard').value,
+    maxLen: document.getElementById('asMaxLen').value, minLen: document.getElementById('asMinLen').value, capLen: document.getElementById('asCapLen').value,
+    stripAlnum: document.getElementById('asAlnum').checked,
+    regions: document.getElementById('asRegions').value, tails: document.getElementById('asTails').value
+  };
+}
+function asNormalized(){ return Object.assign({}, ANSWER_DEFAULTS, normalizeAnswerSettings(asReadForm())); }
+function asFillForm(s){
+  document.getElementById('asAuto').checked = !!s.autoShorten;
+  document.getElementById('asHard').value = s.hard;
+  document.getElementById('asMaxLen').value = s.maxLen;
+  document.getElementById('asMinLen').value = s.minLen;
+  document.getElementById('asCapLen').value = s.capLen;
+  document.getElementById('asAlnum').checked = !!s.stripAlnum;
+  document.getElementById('asRegions').value = s.regions;
+  document.getElementById('asTails').value = s.tails;
+  asRenderHardCount();
+}
+function asRenderHardCount(){
+  const n = new Set([...document.getElementById('asHard').value].filter(c=>/[가-힣]/.test(c))).size;
+  document.getElementById('asHardCount').textContent = `한글 글자 ${n}개`;
+}
+function asRenderMeta(){
+  const m = document.getElementById('asMeta');
+  let t = ANSWER_META.updatedAt ? `마지막 저장: ${ANSWER_META.updatedAt}${ANSWER_META.updatedBy ? ' · '+ANSWER_META.updatedBy : ''}` : '아직 저장된 설정이 없어요. 지금은 기본값을 쓰고 있어요.';
+  if(ANSWER_META.stale) t = '⚠ 등록용 서버가 구버전이라 설정을 저장·불러올 수 없어요 (등록용 Apps Script를 새 버전으로 재배포해 주세요). 지금은 기본값을 쓰고 있어요.';
+  m.textContent = t;
+}
+function asResultHtml(d){
+  if(!d) return '<div class="hint" style="margin-top:14px;">업체명을 입력하면 줄인 정답이 여기에 나와요.</div>';
+  const n = [...d.answer.replace(/\s+/g,'')].length;
+  let html = `<div class="as-diff">${answerDiffHtml(d.original, d.answer)}</div>`;
+  if(d.answer!==d.original) html += `<div class="hint">굵은 글자는 남기고, 취소선은 뺀 글자예요.</div>`;
+  html += `<div class="as-lab">줄인 정답 · ${n}자</div><div class="as-answer">${gcEsc(d.answer)}</div>`;
+  html += d.notes.length ? `<ul class="as-notes">${d.notes.map(x=>`<li><span class="as-tag">${gcEsc(x[0])}</span><span>${gcEsc(x[1])}</span></li>`).join('')}</ul>` : (d.warns.length ? '' : `<div class="hint" style="margin-top:10px;">줄일 곳이 없어서 그대로예요.</div>`);
+  d.warns.forEach(w=>{ html += `<div class="as-warn">${gcEsc(w)}</div>`; });
+  d.hints.forEach(w=>{ html += `<div class="as-hint">${gcEsc(w)}</div>`; });
+  return html;
+}
+function asRenderTest(){
+  const cfg = answerCfgOf(asNormalized());
+  document.getElementById('asTestOut').innerHTML = asResultHtml(shortenPlaceAnswerDetail(document.getElementById('asTestName').value, cfg));
+  const lines = document.getElementById('asBatch').value.split('\n');
+  const out = document.getElementById('asBatchOut');
+  if(!lines.some(l=>l.trim())){ out.innerHTML = ''; return; }
+  const rows = lines.map(l=>{
+    const d = shortenPlaceAnswerDetail(l, cfg);
+    if(!d) return '<tr><td></td><td class="a"></td><td></td></tr>';
+    const memo = d.notes.map(x=>x[0]).filter((v,i,a)=>a.indexOf(v)===i).join(' · ');
+    return `<tr><td>${gcEsc(d.original)}</td><td class="a">${gcEsc(d.answer)}</td><td>${gcEsc(memo||'그대로')}${d.warns.length?' ⚠ '+gcEsc(d.warns.join(' / ')):''}</td></tr>`;
+  }).join('');
+  out.innerHTML = `<table class="as-table"><thead><tr><th>원래 이름</th><th>정답</th><th>적용</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function openAnswerSettings(){
+  asFillForm(ANSWER_SETTINGS); asRenderMeta(); asRenderTest();
+  document.getElementById('asResult').innerHTML = '';
+}
+(function initAnswerSettingsUi(){
+  const ex = document.getElementById('asExamples');
+  AS_EXAMPLES.forEach(t=>{
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = t;
+    b.addEventListener('click', ()=>{ document.getElementById('asTestName').value = t; asRenderTest(); });
+    ex.appendChild(b);
+  });
+  ['asAuto','asHard','asMaxLen','asMinLen','asCapLen','asAlnum','asRegions','asTails','asTestName','asBatch'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.addEventListener(el.type==='checkbox' ? 'change' : 'input', ()=>{ if(id==='asHard') asRenderHardCount(); asRenderTest(); });
+  });
+  document.getElementById('btnAsReset').addEventListener('click', ()=>{
+    asFillForm(ANSWER_DEFAULTS); asRenderTest();
+    document.getElementById('asResult').innerHTML = '<div class="apiresult">기본값을 채웠어요. 저장해야 모든 사용자에게 적용돼요.</div>';
+  });
+  document.getElementById('btnAsReload').addEventListener('click', async ()=>{
+    const btn = document.getElementById('btnAsReload'); btn.disabled = true;
+    await loadAnswerSettings(); openAnswerSettings(); btn.disabled = false;
+  });
+  document.getElementById('btnAsSave').addEventListener('click', async ()=>{
+    const out = document.getElementById('asResult'), btn = document.getElementById('btnAsSave');
+    const s = asNormalized();
+    btn.disabled = true; out.innerHTML = '저장 중...';
+    try{
+      const res = await fetch(TEMPLATE_API_URL, {
+        method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({ type:'saveAnswerSettings', key: sessionStorage.getItem('crt_key')||'', settings: s })
+      });
+      const data = await res.json();
+      if(!data.success){
+        const stale = /invalid action/i.test(data.error||'');
+        out.innerHTML = `<div class="apiresult err">❌ ${gcEsc(data.error||'저장 실패')}${stale?' — 등록용 Apps Script를 새 버전으로 재배포해 주세요.':''}</div>`;
+        return;
+      }
+      ANSWER_SETTINGS = Object.assign({}, ANSWER_DEFAULTS, normalizeAnswerSettings(data.settings||{}));
+      ANSWER_META = {updatedAt: data.updatedAt||'', updatedBy: data.updatedBy||'', stale:false, loaded:true};
+      asFillForm(ANSWER_SETTINGS); asRenderMeta(); asRenderTest(); afterAnswerSettingsChanged();
+      out.innerHTML = '<div class="apiresult ok">✅ 저장했어요. 다른 사용자는 새로 로그인하거나 새로고침하면 적용돼요.</div>';
+    }catch(e){
+      out.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${gcEsc(e.message)}</div>`;
+    }finally{ btn.disabled = false; }
+  });
+})();
+
 async function initAll(){
   await loadGuides();
   await loadTemplates(); // loadTemplates 내부에서 renderTypeSelect -> onTypeChange가 호출되어 가이드도 함께 표시됨
@@ -3406,16 +3924,18 @@ let USER_PERMS = {individual:false, multi:false, isAdmin:false};
 function canUse(mode){
   if(mode==='individual') return !!(USER_PERMS.isAdmin || USER_PERMS.individual);
   if(mode==='multi') return !!(USER_PERMS.isAdmin || USER_PERMS.multi);
-  if(mode==='permissions') return !!USER_PERMS.isAdmin;
+  if(mode==='permissions' || mode==='answerSettings') return !!USER_PERMS.isAdmin;
   return true; // 일괄 등록, 잔액 관리는 모든 로그인 사용자
 }
 function defaultModeForUser(){ return canUse('individual') ? 'individual' : 'bulk'; }
 function applyPermissions(){
+  if(typeof updateShortenBox==='function') updateShortenBox();
   const show = (id, ok, disp)=>{ const el=document.getElementById(id); if(el) el.style.display = ok ? (disp||'') : 'none'; };
   show('modeIndividual', canUse('individual'));
   show('modeMulti', canUse('multi'));
   show('navAdminCaption', canUse('permissions'), 'block');
   show('modePermissions', canUse('permissions'));
+  show('modeAnswerSettings', canUse('answerSettings'));
 }
 
 async function tryLogin(){
@@ -3444,6 +3964,7 @@ async function tryLogin(){
     applyPermissions();
     setMode(defaultModeForUser());
     await initAll();
+    await loadAnswerSettings();   // 관리자가 정한 정답 줄이기 기준을 서버에서 받아옴
     applyCustomTypeAccess();
     if(!window.__autoLogin) sessionStorage.removeItem('crt_balance_alert_shown');
     checkPendingDraft();
@@ -3478,6 +3999,7 @@ function logout(){
   resetWorkState();    // 화면(메모리)에 남은 작업 내용은 지워서 다음 로그인 사용자에게 보이지 않게 합니다
   sessionStorage.removeItem('crt_balance_alert_shown');
   window.__pendingAfterHelp = null;
+  ANSWER_SETTINGS = Object.assign({}, ANSWER_DEFAULTS); ANSWER_META = {updatedAt:'', updatedBy:'', stale:false, loaded:false};
   document.getElementById('balanceAlertModal').style.display = 'none';   // 열려 있던 알림/안내 창도 닫습니다
   document.getElementById('helpModal').style.display = 'none';
   USER_PERMS = {individual:false, multi:false, isAdmin:false};
