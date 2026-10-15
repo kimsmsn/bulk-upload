@@ -146,6 +146,12 @@
   .bw-item{font-size:12.5px;line-height:1.6;padding:7px 0;border-bottom:1px solid #f0f2f6;color:#2f3647;}
   .bw-item:last-child{border-bottom:none;}
 
+  /* ---- 접속 현황 ---- */
+  .pr-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .pr-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;}
+  .pr-on{background:#1a9b52;} .pr-idle{background:#e0a000;} .pr-off{background:#c4c8d4;}
+  #prTable td.dim{color:var(--muted);}
+
   /* ---- 정답 줄이기 설정 ---- */
   .as-check{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;}
   .as-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 20px;margin-top:16px;}
@@ -255,6 +261,7 @@
     <div class="nav-caption" id="navAdminCaption" style="display:none;">관리</div>
     <div class="sidenav-item" id="modePermissions" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>권한 관리</span></div>
     <div class="sidenav-item" id="modeAnswerSettings" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg><span>정답 줄이기 설정</span></div>
+    <div class="sidenav-item" id="modePresence" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>접속 현황</span></div>
   </aside>
 
   <div class="app-main">
@@ -607,6 +614,25 @@
   <div id="balanceResult"></div>
 </div>
 
+<!-- 접속 현황 (관리자 전용) -->
+<div id="presenceMode" style="display:none;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h2 style="margin:0;font-size:20px;">접속 현황</h2>
+        <div class="hint" style="margin-top:4px;" id="prSub">불러오는 중...</div>
+      </div>
+      <button class="btn btn-outline" id="btnPrReload">🔄 새로고침</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="pr-chips" id="prChips"></div>
+    <div id="prDiag" style="display:none;margin-bottom:12px;"></div>
+    <div class="gridwrap"><table class="permtable" id="prTable"></table></div>
+    <div class="hint" style="margin-top:10px;">기록되는 정보는 이름, 로그인 시각, 보고 있는 화면이에요. IP나 기기 정보는 저장하지 않아요. 같은 식별키를 여러 명이 쓰면 한 명으로 보이고 세션 수로만 구분돼요. 창을 닫으면 최대 5분 뒤에 접속 중에서 빠져요.</div>
+  </div>
+</div>
+
 <!-- 정답 줄이기 설정 (관리자 전용) -->
 <div id="answerSettingsMode" style="display:none;">
   <div class="card">
@@ -790,7 +816,8 @@ const ANSWER_DEFAULTS = {
   tails: '치과의원, 한의원, 이비인후과, 산부인과, 정형외과, 피부과, 소아과, 치과, 의원, 병원, 약국, 내과, 안과, 미용실, 음식점, 식당, 횟집, 칼국수, 국밥, 갈치조림, 조림, 전문점, 하우스'
 };
 let ANSWER_SETTINGS = Object.assign({}, ANSWER_DEFAULTS);
-let ANSWER_META = {updatedAt:'', updatedBy:'', stale:false, loaded:false};
+let ANSWER_META = {updatedAt:'', updatedBy:'', stale:false, loaded:false, serverVersion:''};
+const ANSWER_REQUIRED_SERVER = '2026-10-14-a';   // 이 버전 이상이어야 모든 설정 항목을 저장할 수 있음
 
 function answerListOf(v){ return String(v||'').split(/[,\n]/).map(t=>t.trim()).filter(Boolean); }
 function answerCfgOf(s){
@@ -814,8 +841,7 @@ function normalizeAnswerSettings(raw){
   if(has('minLen')){ const n = int(r.minLen,1,5); if(n!==null) o.minLen = n; }
   if(has('capLen')){ const n = int(r.capLen,3,20); if(n!==null) o.capLen = n; }
   if(Object.prototype.hasOwnProperty.call(r,'hard')) o.hard = [...new Set([...String(r.hard===null||r.hard===undefined?'':r.hard)].filter(c=>/[가-힣]/.test(c)))].slice(0,300).join(' ');
-  if(has('tails')) o.tails = list(r.tails);
-  if(has('regions')) o.regions = list(r.regions);
+  ['tails','regions'].forEach(k=>{ if(Object.prototype.hasOwnProperty.call(r,k)) o[k] = list(r[k]===null||r[k]===undefined ? '' : r[k]); });   // 비워서 저장하는 것도 허용
   return o;
 }
 
@@ -1046,7 +1072,7 @@ async function loadAnswerSettings(){
     const data = await res.json();
     if(data && data.success){
       ANSWER_SETTINGS = Object.assign({}, ANSWER_DEFAULTS, normalizeAnswerSettings(data.settings||{}));
-      ANSWER_META = {updatedAt: data.updatedAt||'', updatedBy: data.updatedBy||'', stale:false, loaded:true};
+      ANSWER_META = {updatedAt: data.updatedAt||'', updatedBy: data.updatedBy||'', stale:false, loaded:true, serverVersion: data.scriptVersion||''};
     } else {
       ANSWER_META = Object.assign({}, ANSWER_META, {stale: /invalid action/i.test((data&&data.error)||''), loaded:true});
     }
@@ -1942,6 +1968,7 @@ document.getElementById('modeMulti').addEventListener('click', ()=> setMode('mul
 document.getElementById('modeBalance').addEventListener('click', ()=> setMode('balance'));
 document.getElementById('modePermissions').addEventListener('click', ()=> setMode('permissions'));
 document.getElementById('modeAnswerSettings').addEventListener('click', ()=> setMode('answerSettings'));
+document.getElementById('modePresence').addEventListener('click', ()=> setMode('presence'));
 // "일괄 등록 방법" 안내 창: 일괄 등록 옆 ? 버튼으로 언제든 열 수 있고, 이 브라우저에서 처음 일괄 등록에 들어올 때만 자동으로 한 번 열립니다.
 function openHelp(){
   const m = document.getElementById('helpModal'); m.style.display = 'flex';
@@ -1970,15 +1997,17 @@ function setMode(mode){
   if(!canUse(mode)) mode = defaultModeForUser();
   currentMode = mode;
   const bc = document.getElementById('breadcrumbCurrent');
-  if(bc) bc.textContent = ({individual:'개별 등록', bulk:'일괄 등록', multi:'다문제 등록', balance:'잔액 관리', permissions:'권한 관리', answerSettings:'정답 줄이기 설정'})[mode] || '';
+  if(bc) bc.textContent = ({individual:'개별 등록', bulk:'일괄 등록', multi:'다문제 등록', balance:'잔액 관리', permissions:'권한 관리', answerSettings:'정답 줄이기 설정', presence:'접속 현황'})[mode] || '';
   const hb = document.getElementById('btnBulkHelp');
   if(hb) hb.style.display = mode==='bulk' ? 'inline-flex' : 'none';
   const rb = document.getElementById('btnRefreshAll');
-  if(rb) rb.style.display = (mode==='balance' || mode==='permissions' || mode==='answerSettings') ? 'none' : '';
+  if(rb) rb.style.display = (mode==='balance' || mode==='permissions' || mode==='answerSettings' || mode==='presence') ? 'none' : '';
   document.getElementById('modePermissions').classList.toggle('active', mode==='permissions');
   document.getElementById('permissionsMode').style.display = mode==='permissions' ? 'block':'none';
   document.getElementById('modeAnswerSettings').classList.toggle('active', mode==='answerSettings');
   document.getElementById('answerSettingsMode').style.display = mode==='answerSettings' ? 'block':'none';
+  document.getElementById('modePresence').classList.toggle('active', mode==='presence');
+  document.getElementById('presenceMode').style.display = mode==='presence' ? 'block':'none';
   document.getElementById('modeIndividual').classList.toggle('active', mode==='individual');
   document.getElementById('modeBulk').classList.toggle('active', mode==='bulk');
   document.getElementById('modeMulti').classList.toggle('active', mode==='multi');
@@ -1987,7 +2016,7 @@ function setMode(mode){
   document.getElementById('bulkMode').style.display = mode==='bulk' ? 'block':'none';
   document.getElementById('multiMode').style.display = mode==='multi' ? 'block':'none';
   document.getElementById('previewCard').style.display = mode==='individual' ? 'block':'none';
-  const regHidden = (mode==='balance' || mode==='permissions' || mode==='answerSettings');
+  const regHidden = (mode==='balance' || mode==='permissions' || mode==='answerSettings' || mode==='presence');
   document.getElementById('registrationCommonCards').style.display = regHidden ? 'none':'block';
   document.getElementById('registrationLayout').style.display = regHidden ? 'none':'grid';
   document.getElementById('balanceMode').style.display = mode==='balance' ? 'block':'none';
@@ -1999,6 +2028,8 @@ function setMode(mode){
   if(mode==='balance'){ refreshBalanceOverview(); }
   if(mode==='permissions'){ loadPermissions(); }
   if(mode==='answerSettings'){ openAnswerSettings(); }
+  if(mode==='presence'){ openPresence(); } else { clearInterval(prRefreshTimer); }
+  presenceKick();
   updateDraftBanner(); updateUndoButtons();
 }
 
@@ -3808,6 +3839,149 @@ document.getElementById('btnBaGo').addEventListener('click', ()=>{ closeBalanceA
 document.getElementById('balanceAlertModal').addEventListener('click', (e)=>{ if(e.target.id==='balanceAlertModal') closeBalanceAlert(); });
 document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && document.getElementById('balanceAlertModal').style.display!=='none') closeBalanceAlert(); });
 
+// ==================== 접속 현황 ====================
+// 로그인해 있는 동안 2분마다 "접속 중" 신호를 서버에 보내고, 관리자는 "접속 현황" 탭에서 누가 접속 중인지 봅니다.
+// 서버에 남는 정보: 이름, 보고 있는 화면, 창 상태, 시각 (IP·기기 정보는 보내지 않음). 신호는 시트가 아니라 서버 캐시에만 담깁니다.
+var PRESENCE_INTERVAL_MS = 120000, presenceTimer = null, presenceOff = false, prRefreshTimer = null, lastPingAt = 0, kickTimer = null, PRESENCE_KICK_MS = 15000, lastPing = null;
+function presenceSid(){
+  let s = sessionStorage.getItem('crt_sid');
+  if(!s){ s = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36)+Math.random().toString(36).slice(2)); sessionStorage.setItem('crt_sid', s); }
+  return s;
+}
+// 서버 호출 결과를 구분해서 돌려줍니다: JSON이면 그대로, 네트워크 오류/JSON이 아닌 페이지(권한 승인 안내·Google 오류 페이지)는 종류를 붙여서 던집니다
+async function presenceFetch(url, opts){
+  let res;
+  try{ res = await fetch(url, opts); }
+  catch(e){ const err = new Error('network'); err.kind = 'network'; err.detail = (e && e.message) || ''; throw err; }
+  const text = res.text ? await res.text() : JSON.stringify(await res.json());
+  try{ return JSON.parse(text); }
+  catch(e){ const err = new Error('html'); err.kind = /authorization|권한/i.test(text) ? 'auth' : 'html'; throw err; }
+}
+// 접속 신호/나가기 신호를 보냅니다. 한 방식이 막혀 있으면 다른 방식으로 이어서 시도합니다: ① POST(저장 요청과 같은 방식) → ② 주소 이름을 바꾼 GET → ③ 예전 이름의 GET
+async function presenceCall(kind){
+  const key = sessionStorage.getItem('crt_key') || ''; if(!key) return null;
+  const sid = presenceSid();
+  const screen = (document.getElementById('breadcrumbCurrent')||{}).textContent || '';
+  const vis = document.visibilityState==='visible' ? 1 : 0;
+  const q = `key=${encodeURIComponent(key)}&sid=${encodeURIComponent(sid)}&screen=${encodeURIComponent(screen)}&vis=${vis}`;
+  const post = type => presenceFetch(TEMPLATE_API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({type, key, sid, screen, vis})});
+  const attempts = kind==='touch'
+    ? [()=>post('presenceTouch'), ()=>presenceFetch(`${TEMPLATE_API_URL}?action=touch&${q}`), ()=>presenceFetch(`${TEMPLATE_API_URL}?action=ping&${q}`)]
+    : [()=>post('presenceLeave'), ()=>presenceFetch(`${TEMPLATE_API_URL}?action=bye&key=${encodeURIComponent(key)}&sid=${encodeURIComponent(sid)}`), ()=>presenceFetch(`${TEMPLATE_API_URL}?action=leave&key=${encodeURIComponent(key)}&sid=${encodeURIComponent(sid)}`)];
+  let lastErr = null;
+  for(const run of attempts){
+    try{
+      const d = await run();
+      if(d && d.success) return d;
+      if(d && /invalid (action|type)/i.test(d.error||'')) continue;   // 이 서버가 모르는 방식이면 다음 방식으로
+      return d;                                                         // 서버가 거부한 다른 이유(키 오류 등)는 그대로 돌려줌
+    }catch(e){ lastErr = e; }                                           // 네트워크 오류/JSON이 아닌 응답이면 다음 방식으로
+  }
+  if(lastErr) throw lastErr;
+  return {success:false, error:'invalid action'};                       // 세 방식 모두 서버가 모름 = 구버전
+}
+function sendPresence(){
+  const key = sessionStorage.getItem('crt_key'); if(!key || presenceOff) return;
+  lastPingAt = Date.now();
+  presenceCall('touch').then(d=>{
+    lastPing = {ok: !!(d && d.success), skipped: !!(d && d.skipped), error: (d && d.error) || '', kind:'', at: Date.now()};   // 접속 현황 탭에서 진단에 씀
+    if(d && !d.success && /invalid (action|type)/i.test(d.error||'')) stopPresence(true);                                     // 구버전 서버면 더 보내지 않음
+  }).catch(e=>{ lastPing = {ok:false, skipped:false, error:'', kind:(e && e.kind) || 'network', at: Date.now()}; });
+}
+function sendLeave(){ presenceCall('leave').catch(()=>{}); }
+
+// 화면을 옮기면 다음 신호(2분 뒤)를 기다리지 않고 바로 알려서 "보고 있는 화면"을 갱신합니다. 서버 부담을 막기 위해 15초에 한 번까지만.
+function presenceKick(){
+  if(!presenceTimer) return;
+  const wait = PRESENCE_KICK_MS - (Date.now()-lastPingAt);
+  if(wait <= 0){ sendPresence(); return; }
+  if(!kickTimer) kickTimer = setTimeout(()=>{ kickTimer = null; sendPresence(); }, wait);   // 너무 잦으면 제한 시간이 지난 뒤 한 번만 보냄
+}
+function startPresence(){ stopPresence(false); presenceOff = false; sendPresence(); presenceTimer = setInterval(sendPresence, PRESENCE_INTERVAL_MS); }
+function stopPresence(permanent){ clearInterval(presenceTimer); presenceTimer = null; clearTimeout(kickTimer); kickTimer = null; if(permanent) presenceOff = true; }
+function sendLeave(){
+  const key = sessionStorage.getItem('crt_key'); if(!key) return;
+  fetch(`${TEMPLATE_API_URL}?action=leave&key=${encodeURIComponent(key)}&sid=${encodeURIComponent(presenceSid())}`).catch(()=>{});
+}
+
+function prAgo(ms, now){ const s = Math.max(0, Math.round((now-ms)/1000)); return s<60 ? '방금' : Math.floor(s/60)+'분 전'; }
+function prClock(ms){ const d = new Date(ms); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function openPresence(){
+  loadPresence();
+  clearInterval(prRefreshTimer);
+  prRefreshTimer = setInterval(()=>{ if(currentMode==='presence') loadPresence(); else clearInterval(prRefreshTimer); }, 30000);
+}
+async function loadPresence(){
+  const sub = document.getElementById('prSub');
+  try{
+    const key = sessionStorage.getItem('crt_key') || '';
+    const res = await fetch(`${TEMPLATE_API_URL}?action=getPresence&key=${encodeURIComponent(key)}`);
+    const d = await res.json();
+    if(!d.success){
+      const stale = /invalid action/i.test(d.error||'');
+      sub.textContent = stale ? '접속 현황을 불러올 수 없어요' : (d.error || '불러오기 실패');
+      renderPresence(null);
+      const box = document.getElementById('prDiag');
+      box.style.display = 'block';
+      box.innerHTML = `<div class="apiresult err">⚠ ${stale ? '등록용 서버가 구버전이라 접속 현황을 불러올 수 없어요. 등록용 Apps Script를 새 코드로 교체하고 <b>새 버전으로 재배포</b>해 주세요.' : gcEsc(d.error || '불러오기 실패')}</div>`;
+      return;
+    }
+    renderPresence(d);
+  }catch(e){ sub.textContent = '불러오기 실패'; }
+}
+// 접속 신호가 서버에 저장되고 있는지 스스로 점검해서, 안 되면 이유를 알려줍니다 ("보고 있는 화면"이 비어 있을 때 원인 구분용)
+function prRenderDiag(d, rows){
+  const box = document.getElementById('prDiag'); if(!box) return;
+  const me = sessionStorage.getItem('crt_name') || '';
+  const mine = d.active.some(a=>a.name===me);
+  let msg = '', cls = 'err';
+  if(presenceOff) msg = '이 화면은 서버가 접속 신호를 받지 못해서 신호 전송을 멈췄어요. 등록용 서버가 구버전이에요 — 등록용 Apps Script를 새 코드로 교체하고 새 버전으로 재배포해 주세요.';
+  else if(!lastPing) msg = '아직 접속 신호를 보내지 않았어요. 잠시 뒤 새로고침해 주세요.';
+  else if(!lastPing.ok && lastPing.kind==='auth') msg = '서버가 권한 승인을 요구하는 페이지를 돌려줬어요. Apps Script 편집기에서 authorizeAll 함수를 한 번 실행해 권한을 승인한 뒤, 새 버전으로 재배포해 주세요.';
+  else if(!lastPing.ok && lastPing.kind==='html') msg = '서버가 JSON이 아닌 페이지(Google 오류 페이지 등)를 돌려줬어요. 잠시 뒤 새로고침하고, 계속되면 Apps Script 실행 기록에서 오류를 확인해 주세요.';
+  else if(!lastPing.ok && lastPing.kind==='network') msg = '브라우저가 서버 응답을 받지 못했어요 (Failed to fetch). POST와 GET 방식을 모두 시도했지만 막혔어요. 확인해 보세요: ① 시크릿 창에서 열어보기 ② 광고 차단·보안 확장 프로그램 끄기 ③ 회사/학교 네트워크가 script.google.com 요청을 막는지 ④ 이 PC의 인터넷 연결.';
+  else if(!lastPing.ok) msg = `내 접속 신호를 서버가 받지 않았어요: ${lastPing.error || '알 수 없는 오류'}. 오류 문구가 권한 관련이면 Apps Script 편집기에서 authorizeAll 함수를 한 번 실행해 권한을 승인하고 새 버전으로 재배포해 주세요.`;
+  else if(lastPing.skipped) msg = '서버가 너무 바빠서 이번 신호를 건너뛰었어요. 잠시 뒤 새로고침해 주세요.';
+  else if(!mine) msg = '내 접속 신호는 정상으로 보냈는데 서버의 접속 목록에 없어요. 서버(Apps Script)의 캐시 권한을 확인하고 새 버전으로 다시 배포해 보세요.';
+  else if(rows.filter(r=>r.name!==me && !r.a).length === rows.filter(r=>r.name!==me).length && rows.length>1){
+    msg = '내 신호는 정상이에요. 다른 사용자는 새 화면(이 버전 이상의 HTML)을 열고 로그인해야 접속 중으로 보여요. 업체가 예전 화면을 쓰고 있다면 새로고침(Ctrl+Shift+R)을 안내해 주세요.'; cls = 'info';
+  }
+  if(!msg){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'block';
+  box.innerHTML = `<div class="apiresult ${cls==='err'?'err':''}" style="${cls==='info'?'background:#eef2ff;color:#3f51b5;':''}">${cls==='err'?'⚠ ':'ℹ '}${gcEsc(msg)}</div>`;
+}
+function renderPresence(d){
+  const table = document.getElementById('prTable'), chips = document.getElementById('prChips'), sub = document.getElementById('prSub');
+  if(!d){ table.innerHTML = ''; chips.innerHTML = ''; return; }
+  const now = d.now, FRESH = 150000;                       // 2분 30초 안의 신호 = 접속 중, 그 뒤 5분까지 = 대기
+  const activeBy = {}; d.active.forEach(a=>{ activeBy[a.name] = a; });
+  const info = {}; d.users.forEach(u=>{ info[u.name] = u; });
+  const names = new Set(d.users.map(u=>u.name)); d.active.forEach(a=>names.add(a.name));
+  const rows = [...names].map(n=>({name:n, a:activeBy[n]||null, last:(info[n]||{}).lastLogin||'', isAdmin:!!(info[n]||{}).isAdmin}));
+  rows.sort((x,y)=> (y.a?y.a.lastActive:0)-(x.a?x.a.lastActive:0) || (y.last>x.last?1:(y.last<x.last?-1:0)) || x.name.localeCompare(y.name,'ko'));
+  const online = rows.filter(r=>r.a && now-r.a.lastActive<=FRESH), idle = rows.filter(r=>r.a && now-r.a.lastActive>FRESH);
+  const sessions = online.reduce((s,r)=>s+r.a.sessions,0);
+  const t = new Date();
+  chips.innerHTML = `<span class="gc-chip ok">접속 중 ${online.length}명 · 세션 ${sessions}개</span>`
+    + (idle.length ? `<span class="gc-chip w">대기 ${idle.length}명</span>` : '')
+    + `<span class="hint" style="margin:0;">${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')} 기준 · 30초마다 자동 갱신</span>`;
+  sub.textContent = `전체 ${rows.length}명 · 이름 기준`;
+  prRenderDiag(d, rows);
+  let html = '<thead><tr><th>이름</th><th>상태</th><th>보고 있는 화면</th><th>마지막 활동</th><th>접속 시작</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    const nm = `${gcEsc(r.name)}${r.isAdmin?'<span class="rowno">관리자</span>':''}`;
+    if(r.a){
+      const on = now-r.a.lastActive<=FRESH;
+      html += `<tr><td>${nm}</td><td><span class="pr-dot ${on?'pr-on':'pr-idle'}"></span>${on?'접속 중':'대기'}${r.a.sessions>1?` <span class="rowno">${r.a.sessions}세션</span>`:''}</td>`
+            + `<td>${gcEsc(r.a.screen||'-')}${r.a.visible?'':' <span class="rowno">백그라운드</span>'}</td><td>${prAgo(r.a.lastActive, now)}</td><td>${prClock(r.a.since)}</td></tr>`;
+    } else {
+      html += `<tr><td>${nm}</td><td class="dim"><span class="pr-dot pr-off"></span>${r.last?'마지막 로그인 '+gcEsc(r.last):'접속 기록 없음'}</td><td class="dim">-</td><td class="dim">-</td><td class="dim">-</td></tr>`;
+    }
+  });
+  table.innerHTML = html + '</tbody>';
+}
+document.getElementById('btnPrReload').addEventListener('click', loadPresence);
+
 // ==================== 정답 줄이기 설정 (관리자 전용) ====================
 const AS_EXAMPLES = ['재클린디저트 모슬포점','서울루다치과','제주 돼지국수','투썸플레이스 제주아라점','BHC치킨 제주2호점','GS25 제주점','확 트인 뷰 한림점'];
 function asReadForm(){
@@ -3837,7 +4011,9 @@ function asRenderHardCount(){
 function asRenderMeta(){
   const m = document.getElementById('asMeta');
   let t = ANSWER_META.updatedAt ? `마지막 저장: ${ANSWER_META.updatedAt}${ANSWER_META.updatedBy ? ' · '+ANSWER_META.updatedBy : ''}` : '아직 저장된 설정이 없어요. 지금은 기본값을 쓰고 있어요.';
+  if(ANSWER_META.serverVersion) t += ` · 서버 ${ANSWER_META.serverVersion}`;
   if(ANSWER_META.stale) t = '⚠ 등록용 서버가 구버전이라 설정을 저장·불러올 수 없어요 (등록용 Apps Script를 새 버전으로 재배포해 주세요). 지금은 기본값을 쓰고 있어요.';
+  else if(ANSWER_META.loaded && ANSWER_META.serverVersion < ANSWER_REQUIRED_SERVER) t += ` ⚠ 서버가 구버전이라 일부 항목(정답 최대 글자 수 등)은 저장되지 않아요. 등록용 Apps Script를 새 코드로 교체하고 새 버전으로 재배포해 주세요.`;
   m.textContent = t;
 }
 function asResultHtml(d){
@@ -3904,9 +4080,14 @@ function openAnswerSettings(){
         return;
       }
       ANSWER_SETTINGS = Object.assign({}, ANSWER_DEFAULTS, normalizeAnswerSettings(data.settings||{}));
-      ANSWER_META = {updatedAt: data.updatedAt||'', updatedBy: data.updatedBy||'', stale:false, loaded:true};
+      ANSWER_META = {updatedAt: data.updatedAt||'', updatedBy: data.updatedBy||'', stale:false, loaded:true, serverVersion: data.scriptVersion||''};
+      // 보낸 항목 중 서버가 저장하지 못한 것이 있으면(서버가 구버전) 조용히 기본값으로 돌아가지 않도록 알려줌
+      const AS_LABELS = {autoShorten:'정답 자동 줄이기', hard:'인식이 어려운 글자', maxLen:'지점을 남기는 기준', minLen:'정답 최소 글자 수', capLen:'정답 최대 글자 수', stripAlnum:'영문·숫자 제거', regions:'지역 이름', tails:'꼬리 단어'};
+      const dropped = Object.keys(s).filter(k=>!Object.prototype.hasOwnProperty.call(data.settings||{}, k)).map(k=>AS_LABELS[k]||k);
       asFillForm(ANSWER_SETTINGS); asRenderMeta(); asRenderTest(); afterAnswerSettingsChanged();
-      out.innerHTML = '<div class="apiresult ok">✅ 저장했어요. 다른 사용자는 새로 로그인하거나 새로고침하면 적용돼요.</div>';
+      out.innerHTML = dropped.length
+        ? `<div class="apiresult err">⚠ 서버가 일부 항목을 저장하지 못해서 기본값으로 돌아왔어요: ${gcEsc(dropped.join(', '))}<br>등록용 서버가 구버전이에요. 등록용 Apps Script를 새 코드로 교체하고 <b>새 버전으로 재배포</b>해 주세요.</div>`
+        : '<div class="apiresult ok">✅ 저장했어요. 다른 사용자는 새로 로그인하거나 새로고침하면 적용돼요.</div>';
     }catch(e){
       out.innerHTML = `<div class="apiresult err">❌ 호출 실패: ${gcEsc(e.message)}</div>`;
     }finally{ btn.disabled = false; }
@@ -3924,7 +4105,7 @@ let USER_PERMS = {individual:false, multi:false, isAdmin:false};
 function canUse(mode){
   if(mode==='individual') return !!(USER_PERMS.isAdmin || USER_PERMS.individual);
   if(mode==='multi') return !!(USER_PERMS.isAdmin || USER_PERMS.multi);
-  if(mode==='permissions' || mode==='answerSettings') return !!USER_PERMS.isAdmin;
+  if(mode==='permissions' || mode==='answerSettings' || mode==='presence') return !!USER_PERMS.isAdmin;
   return true; // 일괄 등록, 잔액 관리는 모든 로그인 사용자
 }
 function defaultModeForUser(){ return canUse('individual') ? 'individual' : 'bulk'; }
@@ -3936,6 +4117,7 @@ function applyPermissions(){
   show('navAdminCaption', canUse('permissions'), 'block');
   show('modePermissions', canUse('permissions'));
   show('modeAnswerSettings', canUse('answerSettings'));
+  show('modePresence', canUse('presence'));
 }
 
 async function tryLogin(){
@@ -3969,6 +4151,7 @@ async function tryLogin(){
     if(!window.__autoLogin) sessionStorage.removeItem('crt_balance_alert_shown');
     checkPendingDraft();
     checkBalanceAlert();
+    startPresence();          // 접속 중 신호 보내기 시작 (2분마다)
   }catch(e){
     errEl.textContent = '로그인 서버 호출 실패: ' + e.message;
   }
@@ -3995,6 +4178,7 @@ function applyUserProfile(name){
 }
 
 function logout(){
+  sendLeave(); stopPresence(false); sessionStorage.removeItem('crt_sid');   // 접속 중 목록에서 바로 빼기
   saveDraftNow();      // 작업 중이던 내용은 임시저장해두고
   resetWorkState();    // 화면(메모리)에 남은 작업 내용은 지워서 다음 로그인 사용자에게 보이지 않게 합니다
   sessionStorage.removeItem('crt_balance_alert_shown');
